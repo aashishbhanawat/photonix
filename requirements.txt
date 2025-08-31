@@ -19,12 +19,14 @@ Pillow==9.0.1
 inotify==0.2.10
 asyncinotify==2.0.2
 python-dateutil==2.8.1
-pytz==2019.3
+pytz
 pyshp==2.1.0
 requests==2.22.0
 
 python-redis-lock==3.5.0
-redis==3.3.11
+redis==4.3.4
+celery==5.2.7
+flower==1.2.0
 
 psycopg2-binary==2.8.4
 gunicorn==20.0.4

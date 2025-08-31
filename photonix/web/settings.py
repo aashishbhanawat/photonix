@@ -84,9 +84,9 @@ WSGI_APPLICATION = 'photonix.web.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE':   'django.db.backends.postgresql',
-        'HOST':     os.environ.get('POSTGRES_HOST', '127.0.0.1'),
+        'HOST':     os.environ.get('POSTGRES_HOST', 'localhost'),
         'NAME':     os.environ.get('POSTGRES_DB', 'photonix'),
-        'USER':     os.environ.get('POSTGRES_USER', 'postgres'),
+        'USER':     os.environ.get('POSTGRES_USER', 'photonix'),
         'PASSWORD': os.environ.get('POSTGRES_PASSWORD', 'password'),
         'PORT':     int(os.environ.get('POSTGRES_PORT', '5432')),
     }
@@ -230,3 +230,11 @@ GRAPHQL_JWT = {
 APPEND_SLASHES = False
 
 CORS_ORIGIN_WHITELIST = []
+
+# Celery Configuration Options
+CELERY_BROKER_URL = 'redis://localhost:6379/0'
+CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = 'UTC'

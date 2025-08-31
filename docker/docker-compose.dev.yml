@@ -18,8 +18,8 @@ services:
     ports:
       - '6379:6379'
 
-  photonix:
-    container_name: photonix
+  app:
+    container_name: photonix-app
     image: photonix-dev
     build:
       context: ..
@@ -60,4 +60,42 @@ services:
       - ../system/supervisord.conf:/etc/supervisord.conf
     links:
       - postgres
+      - redis
+
+  worker:
+    container_name: photonix-worker
+    image: photonix-dev
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.dev
+    command: celery -A photonix worker -l info
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_DB: photonix
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      REDIS_HOST: redis
+    volumes:
+      - ../photonix:/srv/photonix
+      - ../data/photos:/data/photos
+      - ../data/raw-photos:/data/raw-photos
+      - ../data/raw-photos-processed:/data/raw-photos-processed
+      - ../data/cache:/data/cache
+      - ../data/models:/data/models
+    links:
+      - postgres
+      - redis
+
+  flower:
+    container_name: photonix-flower
+    image: photonix-dev
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.dev
+    command: celery -A photonix flower --address=0.0.0.0 --port=5555
+    ports:
+      - "5555:5555"
+    environment:
+      REDIS_HOST: redis
+    links:
       - redis
