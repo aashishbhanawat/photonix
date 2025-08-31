@@ -27,7 +27,16 @@ def test_location():
     assert longitude == -21.933911666666667
 
 
-def test_datetime():
+from unittest import mock
+
+
+@mock.patch('os.stat')
+def test_datetime(mock_stat):
+    # Create a mock stat result object with a fixed timestamp
+    mock_stat_result = mock.Mock()
+    mock_stat_result.st_ctime = 1630579429.739248 # This is the timestamp for 2021-09-02T10:43:49.739248+00:00
+    mock_stat.return_value = mock_stat_result
+
     # Data from exif metadata
     photo_path = str(Path(__file__).parent / 'photos' / 'snow.jpg')
     parsed_datetime = get_datetime(photo_path)
