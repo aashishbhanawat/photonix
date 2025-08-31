@@ -77,8 +77,9 @@ chmod +x system/run_local.sh
 ```
 
 This script will:
-1.  Install all necessary Python packages into the `python3.8` global site-packages.
-2.  Run the Django database migrations.
+1.  Downgrade `setuptools` to a compatible version.
+2.  Install all necessary Python packages into the `python3.8` global site-packages.
+3.  Run the Django database migrations.
 3.  Start the following services as background processes:
     -   Celery worker
     -   Flower monitoring UI
