@@ -25,6 +25,7 @@ start_redis() {
 
 install_dependencies() {
     echo "--- Installing Python dependencies ---"
+    sudo python3.8 -m pip install --upgrade "setuptools<58"
     sudo python3.8 -m pip install -r requirements.txt
     echo "--- Dependencies installed ---"
 }

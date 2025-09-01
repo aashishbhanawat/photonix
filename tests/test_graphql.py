@@ -1,9 +1,9 @@
-
 import datetime
 import os
 from pathlib import Path
-from django.test import override_settings, TestCase
+from django.test import override_settings
 import pytest
+import unittest
 
 from .factories import LibraryUserFactory
 from .utils import get_graphql_content
@@ -12,22 +12,30 @@ from photonix.photos.utils.db import record_photo
 from photonix.accounts.models import User
 
 
-@override_settings(GRAPHQL_JWT={
-    'JWT_SECRET_KEY': 'a-secret-key-for-tests',
-    'JWT_VERIFY_EXPIRATION': True,
-    'JWT_LONG_RUNNING_REFRESH_TOKEN': True,
-    'JWT_EXPIRATION_DELTA': datetime.timedelta(minutes=15),
-    'JWT_REFRESH_EXPIRATION_DELTA': datetime.timedelta(days=365),
-})
-class TestGraphQL(TestCase):
+@pytest.mark.django_db
+class TestGraphQL(unittest.TestCase):
     """Test cases for graphql API's."""
 
-    _library_user = None
-    _library = None
+    @pytest.fixture(autouse=True)
+    def defaults_values(self, settings, api_client):
+        """Created default user and library."""
+        settings.GRAPHQL_JWT = {
+            'JWT_SECRET_KEY': 'a-secret-key-for-tests',
+            'JWT_VERIFY_EXPIRATION': True,
+            'JWT_LONG_RUNNING_REFRESH_TOKEN': True,
+            'JWT_EXPIRATION_DELTA': datetime.timedelta(minutes=15),
+            'JWT_REFRESH_EXPIRATION_DELTA': datetime.timedelta(days=365),
+        }
 
-    def setUp(self):
-        """Make user login before each test case run."""
-        super().setUp()
+        self.api_client = api_client
+        self._library_user = LibraryUserFactory()
+        self._library = self._library_user.library
+
+        user = self._library_user.user
+        user.set_password('demo123456')
+        user.save()
+        self.api_client.set_user(user)
+
         login_mutation = """
             mutation TokenAuth($username: String!, $password: String!) {
                 tokenAuth(username: $username, password: $password) {
@@ -37,19 +45,9 @@ class TestGraphQL(TestCase):
               }
         """
         self.api_client.post_graphql(login_mutation, {
-            'username': self.defaults['user'].username,
-            'password': self.defaults['password']})
+            'username': user.username,
+            'password': 'demo123456'})
 
-    @pytest.fixture(autouse=True)
-    def defaults_values(self, db, api_client):
-        """Created default user and library."""
-        self.api_client = api_client
-        self._library_user = LibraryUserFactory()
-        self._library = self._library_user.library
-
-        user = self._library_user.user
-        user.set_password('demo123456')
-        user.save()
 
         LibraryPath.objects.create(library=self._library, type="St", backend_type='Lo', path='/data/photos/')
         snow_path = str(Path(__file__).parent / 'photos' / 'snow.jpg')
@@ -387,7 +385,7 @@ class TestGraphQL(TestCase):
                 }
             }
         """
-        response = self.api_client.post_graphql(mutation, {'photoId': self.defaults['snow_photo'].id,'starRating':4})
+        response = self.api_client.post_graphql(mutation, {'photoId': str(self.defaults['snow_photo'].id),'starRating':4})
         data = get_graphql_content(response)
         assert response.status_code == 200
         self.assertEqual(tuple(tuple(tuple(data.values())[0].values())[0].values())[0].get('starRating'),4)
@@ -409,7 +407,7 @@ class TestGraphQL(TestCase):
             }
         """
         response = self.api_client.post_graphql(
-            mutation, {'name': 'snow-photo', 'photoId': self.defaults['snow_photo'].id})
+            mutation, {'name': 'snow-photo', 'photoId': str(self.defaults['snow_photo'].id)})
         data = get_graphql_content(response)
         created_generic_tag_obj = Tag.objects.get(name='snow-photo')
         assert tuple(tuple(data.values())[0].values())[0].get('ok')
@@ -439,7 +437,7 @@ class TestGraphQL(TestCase):
             }
         """
         response = self.api_client.post_graphql(
-            mutation, {'name': 'snow-photo', 'photoId': self.defaults['snow_photo'].id})
+            mutation, {'name': 'snow-photo', 'photoId': str(self.defaults['snow_photo'].id)})
         data = get_graphql_content(response)
         created_generic_tag_obj = Tag.objects.get(name='snow-photo')
         assert tuple(tuple(data.values())[0].values())[0].get('ok')
@@ -464,11 +462,11 @@ class TestGraphQL(TestCase):
               }
         """
         response = self.api_client.post_graphql(
-            mutation, {'tagId': created_generic_tag_obj.id, 'photoId': self.defaults['snow_photo'].id})
+            mutation, {'tagId': str(created_generic_tag_obj.id), 'photoId': str(self.defaults['snow_photo'].id)})
         data = get_graphql_content(response)
         assert tuple(tuple(data.values())[0].values())[0].get('ok')
-        self.assertFalse(Photo.objects.get(id=self.defaults['snow_photo'].id).photo_tags.filter(id=created_generic_tag_obj.id))
-        self.assertFalse(Tag.objects.filter(id=created_generic_tag_obj.id))
+        self.assertFalse(Photo.objects.get(id=self.defaults['snow_photo'].id).photo_tags.filter(id=created_generic_tag_obj.id).exists())
+        self.assertFalse(Tag.objects.filter(id=created_generic_tag_obj.id).exists())
 
     def test_get_photo_detail_api(self):
         """Test valid resposne of get photo api."""
@@ -740,7 +738,7 @@ class TestGraphQL(TestCase):
                 allShootingModes(libraryId: $libraryId)
               }
         """
-        response = self.api_client.post_graphql(query, {'libraryId': self.defaults['library'].id,'multiFilter': multi_filter})
+        response = self.api_client.post_graphql(query, {'libraryId': str(self.defaults['library'].id),'multiFilter': multi_filter})
         data = get_graphql_content(response)
         self.assertEqual(len(data['data']['allObjectTags']), 1)
         self.assertEqual(data['data']['allObjectTags'][0]['name'], object_type_tag.name)
@@ -752,20 +750,20 @@ class TestGraphQL(TestCase):
         self.assertEqual(str(data['data']['allFocalLengths'][0]), self.defaults['snow_photo'].focal_length)
 
 
-@override_settings(GRAPHQL_JWT={
-    'JWT_SECRET_KEY': 'a-secret-key-for-tests',
-    'JWT_VERIFY_EXPIRATION': True,
-    'JWT_LONG_RUNNING_REFRESH_TOKEN': True,
-    'JWT_EXPIRATION_DELTA': datetime.timedelta(minutes=15),
-    'JWT_REFRESH_EXPIRATION_DELTA': datetime.timedelta(days=365),
-})
 @pytest.mark.django_db
-class TestGraphQLOnboarding(TestCase):
+class TestGraphQLOnboarding(unittest.TestCase):
     """Check onboarding(user sign up) process queries."""
 
     @pytest.fixture(autouse=True)
-    def use_fixture(self, api_client):
+    def use_fixture(self, settings, api_client):
         """Method to use unittest.TestCase and api_client fixture together in one class."""
+        settings.GRAPHQL_JWT = {
+            'JWT_SECRET_KEY': 'a-secret-key-for-tests',
+            'JWT_VERIFY_EXPIRATION': True,
+            'JWT_LONG_RUNNING_REFRESH_TOKEN': True,
+            'JWT_EXPIRATION_DELTA': datetime.timedelta(minutes=15),
+            'JWT_REFRESH_EXPIRATION_DELTA': datetime.timedelta(days=365),
+        }
         self.api_client = api_client
 
     def test_onboarding_steps(self):
@@ -913,5 +911,3 @@ class TestGraphQLOnboarding(TestCase):
                 has_configured_image_analysis=True).exists()
         )
         assert response.wsgi_request.user.username == 'demo'
-
-
