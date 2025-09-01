@@ -1,9 +1,6 @@
 import datetime
-import os
 from pathlib import Path
-from django.test import override_settings
 import pytest
-import unittest
 
 from .factories import LibraryUserFactory
 from .utils import get_graphql_content
@@ -12,73 +9,54 @@ from photonix.photos.utils.db import record_photo
 from photonix.accounts.models import User
 
 
+@pytest.fixture
+def setup_data(db, api_client):
+    """Create default user, library, photos and login."""
+    library_user = LibraryUserFactory()
+    library = library_user.library
+    user = library_user.user
+    user.set_password('demo123456')
+    user.save()
+
+    # Authenticate the user for the client
+    api_client.set_user(user)
+
+    LibraryPath.objects.create(library=library, type="St", backend_type='Lo', path='/data/photos/')
+    snow_path = str(Path(__file__).parent / 'photos' / 'snow.jpg')
+    snow_photo = record_photo(snow_path, library)
+
+    tree_path = str(Path(__file__).parent / 'photos' / 'tree.jpg')
+    tree_photo = record_photo(tree_path, library)
+
+    return {
+        'library_user': library_user,
+        'library': library,
+        'user': user,
+        'snow_photo': snow_photo,
+        'tree_photo': tree_photo,
+        'password': 'demo123456',
+    }
+
+
 @pytest.mark.django_db
-class TestGraphQL(unittest.TestCase):
+class TestGraphQL:
     """Test cases for graphql API's."""
 
-    @pytest.fixture(autouse=True)
-    def defaults_values(self, settings, api_client):
-        """Created default user and library."""
-        settings.GRAPHQL_JWT = {
-            'JWT_SECRET_KEY': 'a-secret-key-for-tests',
-            'JWT_VERIFY_EXPIRATION': True,
-            'JWT_LONG_RUNNING_REFRESH_TOKEN': True,
-            'JWT_EXPIRATION_DELTA': datetime.timedelta(minutes=15),
-            'JWT_REFRESH_EXPIRATION_DELTA': datetime.timedelta(days=365),
-        }
-
-        self.api_client = api_client
-        self._library_user = LibraryUserFactory()
-        self._library = self._library_user.library
-
-        user = self._library_user.user
-        user.set_password('demo123456')
-        user.save()
-        self.api_client.set_user(user)
-
-        login_mutation = """
-            mutation TokenAuth($username: String!, $password: String!) {
-                tokenAuth(username: $username, password: $password) {
-                  token
-                  refreshToken
-                }
-              }
-        """
-        self.api_client.post_graphql(login_mutation, {
-            'username': user.username,
-            'password': 'demo123456'})
-
-
-        LibraryPath.objects.create(library=self._library, type="St", backend_type='Lo', path='/data/photos/')
-        snow_path = str(Path(__file__).parent / 'photos' / 'snow.jpg')
-        snow_photo = record_photo(snow_path, self._library)
-
-        tree_path = str(Path(__file__).parent / 'photos' / 'tree.jpg')
-        tree_photo = record_photo(tree_path, self._library)
-
-        self.defaults = {
-            'library_user': self._library_user,
-            'library': self._library,
-            'user': user,
-            'snow_photo': snow_photo,
-            'tree_photo': tree_photo,
-            'password': 'demo123456',
-        }
-
-    def test_fix347(self):
+    def test_fix347(self, setup_data):
         # Test fix 347 - Photos with same date are not imported
+        library = setup_data['library']
         path_photo1 = str(Path(__file__).parent / 'photos' / 'photo_no_metadata_1.jpg')
         Path(path_photo1).touch()
 
         path_photo2 = str(Path(__file__).parent / 'photos' / 'photo_no_metadata_2.jpg')
         Path(path_photo2).touch()
 
-        photo1 = record_photo(path_photo1, self._library)
-        photo2 = record_photo(path_photo2, self._library)
+        photo1 = record_photo(path_photo1, library)
+        photo2 = record_photo(path_photo2, library)
 
-        assert(not photo1 == photo2)
+        assert photo1 != photo2
 
-    def test_user_login_environment(self):
+    def test_user_login_environment(self, api_client, setup_data):
         """Test user logged in successfully or not."""
         environment_query = """
             query{
@@ -92,14 +70,13 @@ class TestGraphQL(unittest.TestCase):
                 }
             }
         """
-        response = self.api_client.post_graphql(environment_query)
+        response = api_client.post_graphql(environment_query)
         assert response.status_code == 200
         data = get_graphql_content(response)
-        self.assertFalse(data['data']['environment']['firstRun'])
-        # TODO: Test to make sure the user is actually logged in here - userId etc. should be set
+        assert not data['data']['environment']['firstRun']
+        assert data['data']['environment']['userId'] == str(setup_data['user'].id)
 
-    def test_get_photo(self):
-        # self.api_client.set_user(self.defaults['user'])
+    def test_get_photo(self, api_client, setup_data):
         query = """
             query PhotoQuery($id: UUID) {
                 photo(id: $id) {
@@ -107,13 +84,12 @@ class TestGraphQL(unittest.TestCase):
                 }
             }
         """
-        response = self.api_client.post_graphql(query, {'id': str(self.defaults['snow_photo'].id)})
+        response = api_client.post_graphql(query, {'id': str(setup_data['snow_photo'].id)})
         assert response.status_code == 200
         data = get_graphql_content(response)
         assert data['data']['photo']['url'].startswith('/thumbnails')
 
-    def test_get_photos(self):
-        # self.api_client.set_user(self.defaults['user'])
+    def test_get_photos(self, api_client, setup_data):
         query = """
             {
                 allPhotos {
@@ -125,17 +101,16 @@ class TestGraphQL(unittest.TestCase):
                 }
             }
         """
-        response = self.api_client.post_graphql(query, {'id': str(self.defaults['snow_photo'].id)})
+        response = api_client.post_graphql(query, {'id': str(setup_data['snow_photo'].id)})
         assert response.status_code == 200
         data = get_graphql_content(response)
         assert len(data['data']['allPhotos']['edges']) == 2
         assert data['data']['allPhotos']['edges'][0]['node']['url'].startswith('/thumbnails')
 
-    def test_filter_photos(self):
-        tree_tag, _ = Tag.objects.get_or_create(library=self.defaults['library'], name='Tree', type='O')
-        tree_photo_tag, _ = PhotoTag.objects.get_or_create(photo=self.defaults['snow_photo'], tag=tree_tag, confidence=1.0)
-        multi_filter = 'library_id:{0} tag:{1}'.format(self.defaults['library'].id,tree_tag.id)
-        # self.api_client.set_user(self.defaults['user'])
+    def test_filter_photos(self, api_client, setup_data):
+        tree_tag, _ = Tag.objects.get_or_create(library=setup_data['library'], name='Tree', type='O')
+        PhotoTag.objects.get_or_create(photo=setup_data['snow_photo'], tag=tree_tag, confidence=1.0)
+        multi_filter = 'library_id:{0} tag:{1}'.format(setup_data['library'].id, tree_tag.id)
         query = """
             query PhotoQuery($filters: String) {
                 allPhotos(multiFilter: $filters) {
@@ -147,29 +122,29 @@ class TestGraphQL(unittest.TestCase):
                 }
             }
         """
-        response = self.api_client.post_graphql(query, {'filters': multi_filter})
+        response = api_client.post_graphql(query, {'filters': multi_filter})
 
         assert response.status_code == 200
         data = get_graphql_content(response)
         assert len(data['data']['allPhotos']['edges']) == 1
-        assert data['data']['allPhotos']['edges'][0]['node']['id'] == str(self.defaults['snow_photo'].id)
+        assert data['data']['allPhotos']['edges'][0]['node']['id'] == str(setup_data['snow_photo'].id)
 
         # Add 'Tree' tag to another photo. Querying again should return 2 photos
-        tree_photo_tag, _ = PhotoTag.objects.get_or_create(photo=self.defaults['tree_photo'], tag=tree_tag, confidence=1.0)
-        response = self.api_client.post_graphql(query, {'filters': multi_filter})
+        PhotoTag.objects.get_or_create(photo=setup_data['tree_photo'], tag=tree_tag, confidence=1.0)
+        response = api_client.post_graphql(query, {'filters': multi_filter})
 
         assert response.status_code == 200
         data = get_graphql_content(response)
         assert len(data['data']['allPhotos']['edges']) == 2
 
         # Add 'Tree' to the last photo again (allowed). Querying should not return duplicates
-        tree_photo_tag, _ = PhotoTag.objects.get_or_create(photo=self.defaults['tree_photo'], tag=tree_tag, confidence=0.9)
-        response = self.api_client.post_graphql(query, {'filters': multi_filter})
+        PhotoTag.objects.get_or_create(photo=setup_data['tree_photo'], tag=tree_tag, confidence=0.9)
+        response = api_client.post_graphql(query, {'filters': multi_filter})
         assert response.status_code == 200
         data = get_graphql_content(response)
         assert len(data['data']['allPhotos']['edges']) == 2
 
-    def test_all_libraries(self):
+    def test_all_libraries(self, api_client, setup_data):
         """Test list of libraries."""
         query = """
             {
@@ -179,14 +154,14 @@ class TestGraphQL(unittest.TestCase):
                 }
             }
         """
-        response = self.api_client.post_graphql(query)
+        response = api_client.post_graphql(query)
         data = get_graphql_content(response)
         assert response.status_code == 200
         assert len(data['data']['allLibraries']) == 1
-        self.assertEqual(data['data']['allLibraries'][0]['id'], str(self.defaults['library'].id), "Library id not matched.")
-        self.assertEqual(data['data']['allLibraries'][0]['name'], self.defaults['library'].name, "Library name not matched.")
+        assert data['data']['allLibraries'][0]['id'] == str(setup_data['library'].id)
+        assert data['data']['allLibraries'][0]['name'] == setup_data['library'].name
 
-    def test_user_profile_data(self):
+    def test_user_profile_data(self, api_client, setup_data):
         """Test profile data."""
         query = """
             {
@@ -197,14 +172,14 @@ class TestGraphQL(unittest.TestCase):
                 }
             }
         """
-        response = self.api_client.post_graphql(query)
+        response = api_client.post_graphql(query)
         data = get_graphql_content(response)
         assert response.status_code == 200
-        self.assertEqual(data['data']['profile']['id'], str(self.defaults['user'].id), "user id not matched.")
-        self.assertEqual(data['data']['profile']['username'], self.defaults['user'].username, "username not matched.")
-        self.assertEqual(data['data']['profile']['email'], self.defaults['user'].email, "email not matched.")
+        assert data['data']['profile']['id'] == str(setup_data['user'].id)
+        assert data['data']['profile']['username'] == setup_data['user'].username
+        assert data['data']['profile']['email'] == setup_data['user'].email
 
-    def test_library_setting_data(self):
+    def test_library_setting_data(self, api_client, setup_data):
         """Test library setting data."""
         query = """
             query LibrarySetting($libraryId: UUID) {
@@ -221,18 +196,18 @@ class TestGraphQL(unittest.TestCase):
                 }
             }
         """
-        response = self.api_client.post_graphql(query, {'libraryId': str(self.defaults['library'].id)})
+        response = api_client.post_graphql(query, {'libraryId': str(setup_data['library'].id)})
         data = get_graphql_content(response)
         assert response.status_code == 200
-        self.assertEqual(data['data']['librarySetting']['library']['name'], self.defaults['library'].name)
-        self.assertTrue(data['data']['librarySetting']['library']['classificationColorEnabled'])
-        self.assertTrue(data['data']['librarySetting']['library']['classificationStyleEnabled'])
-        self.assertTrue(data['data']['librarySetting']['library']['classificationObjectEnabled'])
-        self.assertTrue(data['data']['librarySetting']['library']['classificationLocationEnabled'])
-        self.assertTrue(data['data']['librarySetting']['library']['classificationFaceEnabled'])
-        self.assertEqual(data['data']['librarySetting']['sourceFolder'], self.defaults['library'].paths.all()[0].path)
+        assert data['data']['librarySetting']['library']['name'] == setup_data['library'].name
+        assert data['data']['librarySetting']['library']['classificationColorEnabled']
+        assert data['data']['librarySetting']['library']['classificationStyleEnabled']
+        assert data['data']['librarySetting']['library']['classificationObjectEnabled']
+        assert data['data']['librarySetting']['library']['classificationLocationEnabled']
+        assert data['data']['librarySetting']['library']['classificationFaceEnabled']
+        assert data['data']['librarySetting']['sourceFolder'] == setup_data['library'].paths.all()[0].path
 
-    def test_library_update_style_enabled_mutation(self):
+    def test_library_update_style_enabled_mutation(self, api_client, setup_data):
         """Test library updateStyleEnabled mutation response."""
         mutation = """
             mutation updateStyleEnabled(
@@ -249,12 +224,12 @@ class TestGraphQL(unittest.TestCase):
                 }
               }
         """
-        response = self.api_client.post_graphql(mutation, {'classificationStyleEnabled':True,'libraryId': str(self.defaults['library'].id)})
+        response = api_client.post_graphql(mutation, {'classificationStyleEnabled': True, 'libraryId': str(setup_data['library'].id)})
         data = get_graphql_content(response)
         assert response.status_code == 200
-        assert tuple(tuple(data.values())[0].values())[0].get('classificationStyleEnabled')
+        assert data['data']['updateStyleEnabled']['classificationStyleEnabled']
 
-    def test_library_update_color_enabled_mutation(self):
+    def test_library_update_color_enabled_mutation(self, api_client, setup_data):
         """Test library updateColorEnabled mutation response."""
         mutation = """
             mutation updateColorEnabled(
@@ -271,12 +246,12 @@ class TestGraphQL(unittest.TestCase):
                 }
             }
         """
-        response = self.api_client.post_graphql(mutation, {'classificationColorEnabled':True,'libraryId': str(self.defaults['library'].id)})
+        response = api_client.post_graphql(mutation, {'classificationColorEnabled': True, 'libraryId': str(setup_data['library'].id)})
         data = get_graphql_content(response)
         assert response.status_code == 200
-        assert tuple(tuple(data.values())[0].values())[0].get('classificationColorEnabled')
+        assert data['data']['updateColorEnabled']['classificationColorEnabled']
 
-    def test_library_update_location_enabled_mutation(self):
+    def test_library_update_location_enabled_mutation(self, api_client, setup_data):
         """Test library updateLocationEnabled mutation response."""
         mutation = """
             mutation updateLocationEnabled(
@@ -293,12 +268,12 @@ class TestGraphQL(unittest.TestCase):
                 }
             }
         """
-        response = self.api_client.post_graphql(mutation, {'classificationLocationEnabled':False,'libraryId': str(self.defaults['library'].id)})
+        response = api_client.post_graphql(mutation, {'classificationLocationEnabled': False, 'libraryId': str(setup_data['library'].id)})
         data = get_graphql_content(response)
         assert response.status_code == 200
-        self.assertFalse(tuple(tuple(data.values())[0].values())[0].get('classificationLocationEnabled'))
+        assert not data['data']['updateLocationEnabled']['classificationLocationEnabled']
 
-    def test_library_update_object_enabled_mutation(self):
+    def test_library_update_object_enabled_mutation(self, api_client, setup_data):
         """Test library updateObjectEnabled mutation response."""
         mutation = """
             mutation updateObjectEnabled(
@@ -315,12 +290,12 @@ class TestGraphQL(unittest.TestCase):
                 }
             }
         """
-        response = self.api_client.post_graphql(mutation, {'classificationObjectEnabled':False,'libraryId': str(self.defaults['library'].id)})
+        response = api_client.post_graphql(mutation, {'classificationObjectEnabled': False, 'libraryId': str(setup_data['library'].id)})
         data = get_graphql_content(response)
         assert response.status_code == 200
-        self.assertFalse(tuple(tuple(data.values())[0].values())[0].get('classificationObjectEnabled'))
+        assert not data['data']['updateObjectEnabled']['classificationObjectEnabled']
 
-    def test_library_update_source_folder_mutation(self):
+    def test_library_update_source_folder_mutation(self, api_client, setup_data):
         """Test library updateSourceFolder mutation response."""
         mutation = """
             mutation updateSourceFolder($sourceFolder: String!, $libraryId: ID) {
@@ -331,12 +306,12 @@ class TestGraphQL(unittest.TestCase):
                 }
             }
         """
-        response = self.api_client.post_graphql(mutation, {'sourceFolder': '/data/photos/','libraryId': str(self.defaults['library'].id)})
+        response = api_client.post_graphql(mutation, {'sourceFolder': '/data/photos/', 'libraryId': str(setup_data['library'].id)})
         data = get_graphql_content(response)
         assert response.status_code == 200
-        self.assertEqual(tuple(tuple(data.values())[0].values())[0].get('sourceFolder'),self.defaults['library'].paths.all()[0].path)
+        assert data['data']['updateSourceFolder']['sourceFolder'] == setup_data['library'].paths.all()[0].path
 
-    def test_change_password_mutation(self):
+    def test_change_password_mutation(self, api_client, setup_data):
         """Test change password mutation response."""
         mutation = """
             mutation changePassword (
@@ -348,12 +323,12 @@ class TestGraphQL(unittest.TestCase):
                 }
               }
         """
-        response = self.api_client.post_graphql(mutation, {'oldPassword': self.defaults['password'],'newPassword': 'download123'})
+        response = api_client.post_graphql(mutation, {'oldPassword': setup_data['password'], 'newPassword': 'download123'})
         data = get_graphql_content(response)
         assert response.status_code == 200
-        assert tuple(tuple(data.values())[0].values())[0].get('ok')
+        assert data['data']['changePassword']['ok']
 
-    def test_after_signup_api(self):
+    def test_after_signup_api(self, api_client, setup_data):
         """Test after signup api response."""
         query = """
             {
@@ -363,13 +338,13 @@ class TestGraphQL(unittest.TestCase):
               }
             }
         """
-        response = self.api_client.post_graphql(query)
+        response = api_client.post_graphql(query)
         data = get_graphql_content(response)
         assert response.status_code == 200
-        assert tuple(tuple(data.values())[0].values())[0].get('token')
-        assert tuple(tuple(data.values())[0].values())[0].get('refreshToken')
+        assert data['data']['afterSignup']['token']
+        assert data['data']['afterSignup']['refreshToken']
 
-    def test_photo_rating_mutation(self):
+    def test_photo_rating_mutation(self, api_client, setup_data):
         """Test photo rating mutation response."""
         mutation = """
             mutation photoRating(
@@ -385,13 +360,13 @@ class TestGraphQL(unittest.TestCase):
                 }
             }
         """
-        response = self.api_client.post_graphql(mutation, {'photoId': str(self.defaults['snow_photo'].id),'starRating':4})
+        response = api_client.post_graphql(mutation, {'photoId': str(setup_data['snow_photo'].id), 'starRating': 4})
         data = get_graphql_content(response)
         assert response.status_code == 200
-        self.assertEqual(tuple(tuple(tuple(data.values())[0].values())[0].values())[0].get('starRating'),4)
-        self.assertEqual(tuple(tuple(tuple(data.values())[0].values())[0].values())[0].get('aperture'), self.defaults['snow_photo'].aperture)
+        assert data['data']['photoRating']['photo']['starRating'] == 4
+        assert data['data']['photoRating']['photo']['aperture'] == setup_data['snow_photo'].aperture
 
-    def test_create_generic_tag_mutation(self):
+    def test_create_generic_tag_mutation(self, api_client, setup_data):
         """Test create_generic_tag mutation response."""
         mutation = """
             mutation createGenericTag(
@@ -406,22 +381,16 @@ class TestGraphQL(unittest.TestCase):
                 }
             }
         """
-        response = self.api_client.post_graphql(
-            mutation, {'name': 'snow-photo', 'photoId': str(self.defaults['snow_photo'].id)})
+        response = api_client.post_graphql(
+            mutation, {'name': 'snow-photo', 'photoId': str(setup_data['snow_photo'].id)})
         data = get_graphql_content(response)
         created_generic_tag_obj = Tag.objects.get(name='snow-photo')
-        assert tuple(tuple(data.values())[0].values())[0].get('ok')
-        self.assertEqual(
-            tuple(tuple(data.values())[0].values())[0].get('photoTagId'),
-            str(created_generic_tag_obj.photo_tags.all()[0].id))
-        self.assertEqual(
-            tuple(tuple(data.values())[0].values())[0].get('tagId'),
-            str(created_generic_tag_obj.id))
-        self.assertEqual(
-            tuple(tuple(data.values())[0].values())[0].get('name'),
-            'snow-photo')
+        assert data['data']['createGenericTag']['ok']
+        assert data['data']['createGenericTag']['photoTagId'] == str(created_generic_tag_obj.photo_tags.all()[0].id)
+        assert data['data']['createGenericTag']['tagId'] == str(created_generic_tag_obj.id)
+        assert data['data']['createGenericTag']['name'] == 'snow-photo'
 
-    def test_remove_generic_tag_mutation(self):
+    def test_remove_generic_tag_mutation(self, api_client, setup_data):
         """Test remove_generic_tag mutation response."""
         mutation = """
             mutation createGenericTag(
@@ -436,20 +405,14 @@ class TestGraphQL(unittest.TestCase):
                 }
             }
         """
-        response = self.api_client.post_graphql(
-            mutation, {'name': 'snow-photo', 'photoId': str(self.defaults['snow_photo'].id)})
+        response = api_client.post_graphql(
+            mutation, {'name': 'snow-photo', 'photoId': str(setup_data['snow_photo'].id)})
         data = get_graphql_content(response)
         created_generic_tag_obj = Tag.objects.get(name='snow-photo')
-        assert tuple(tuple(data.values())[0].values())[0].get('ok')
-        self.assertEqual(
-            tuple(tuple(data.values())[0].values())[0].get('photoTagId'),
-            str(created_generic_tag_obj.photo_tags.all()[0].id))
-        self.assertEqual(
-            tuple(tuple(data.values())[0].values())[0].get('tagId'),
-            str(created_generic_tag_obj.id))
-        self.assertEqual(
-            tuple(tuple(data.values())[0].values())[0].get('name'),
-            'snow-photo')
+        assert data['data']['createGenericTag']['ok']
+        assert data['data']['createGenericTag']['photoTagId'] == str(created_generic_tag_obj.photo_tags.all()[0].id)
+        assert data['data']['createGenericTag']['tagId'] == str(created_generic_tag_obj.id)
+        assert data['data']['createGenericTag']['name'] == 'snow-photo'
 
         mutation = """
             mutation removeGenericTag(
@@ -461,14 +424,14 @@ class TestGraphQL(unittest.TestCase):
                 }
               }
         """
-        response = self.api_client.post_graphql(
-            mutation, {'tagId': str(created_generic_tag_obj.id), 'photoId': str(self.defaults['snow_photo'].id)})
+        response = api_client.post_graphql(
+            mutation, {'tagId': str(created_generic_tag_obj.id), 'photoId': str(setup_data['snow_photo'].id)})
         data = get_graphql_content(response)
-        assert tuple(tuple(data.values())[0].values())[0].get('ok')
-        self.assertFalse(Photo.objects.get(id=self.defaults['snow_photo'].id).photo_tags.filter(id=created_generic_tag_obj.id).exists())
-        self.assertFalse(Tag.objects.filter(id=created_generic_tag_obj.id).exists())
+        assert data['data']['removeGenericTag']['ok']
+        assert not Photo.objects.get(id=setup_data['snow_photo'].id).photo_tags.filter(id=created_generic_tag_obj.id).exists()
+        assert not Tag.objects.filter(id=created_generic_tag_obj.id).exists()
 
-    def test_get_photo_detail_api(self):
+    def test_get_photo_detail_api(self, api_client, setup_data):
         """Test valid resposne of get photo api."""
         query = """
             query Photo($id: UUID) {
@@ -542,32 +505,32 @@ class TestGraphQL(unittest.TestCase):
                 }
               }
         """
-        tree_tag, _ = Tag.objects.get_or_create(library=self.defaults['library'], name='Tree', type='O')
-        tree_photo_tag, _ = PhotoTag.objects.get_or_create(photo=self.defaults['tree_photo'], tag=tree_tag, confidence=1.0)
-        response = self.api_client.post_graphql(query, {'id': str(self.defaults['tree_photo'].id)})
+        tree_tag, _ = Tag.objects.get_or_create(library=setup_data['library'], name='Tree', type='O')
+        tree_photo_tag, _ = PhotoTag.objects.get_or_create(photo=setup_data['tree_photo'], tag=tree_tag, confidence=1.0)
+        response = api_client.post_graphql(query, {'id': str(setup_data['tree_photo'].id)})
         assert response.status_code == 200
         data = get_graphql_content(response)
-        self.assertEqual(data['data']['photo']['id'], str(self.defaults['tree_photo'].id))
-        self.assertEqual(data['data']['photo']['aperture'], self.defaults['tree_photo'].aperture)
-        self.assertEqual(data['data']['photo']['exposure'], self.defaults['tree_photo'].exposure)
-        self.assertEqual(data['data']['photo']['isoSpeed'], self.defaults['tree_photo'].iso_speed)
-        self.assertEqual(str(data['data']['photo']['focalLength']), self.defaults['tree_photo'].focal_length)
-        self.assertEqual(data['data']['photo']['meteringMode'], self.defaults['tree_photo'].metering_mode)
-        self.assertFalse(data['data']['photo']['flash'])
-        self.assertEqual(data['data']['photo']['camera']['id'], str(self.defaults['tree_photo'].camera.id))
-        self.assertEqual(data['data']['photo']['width'], self.defaults['tree_photo'].dimensions[0])
-        self.assertEqual(data['data']['photo']['height'], self.defaults['tree_photo'].dimensions[1])
-        self.assertEqual(data['data']['photo']['objectTags'][0]['id'], str(tree_photo_tag.id))
-        self.assertEqual(data['data']['photo']['objectTags'][0]['tag']['name'], tree_tag.name)
-        assert data['data']['photo']['url'].startswith('/thumbnails')
+        photo_data = data['data']['photo']
+        tree_photo = setup_data['tree_photo']
+        assert photo_data['id'] == str(tree_photo.id)
+        assert photo_data['aperture'] == tree_photo.aperture
+        assert photo_data['exposure'] == tree_photo.exposure
+        assert photo_data['isoSpeed'] == tree_photo.iso_speed
+        assert str(photo_data['focalLength']) == tree_photo.focal_length
+        assert photo_data['meteringMode'] == tree_photo.metering_mode
+        assert not photo_data['flash']
+        assert photo_data['camera']['id'] == str(tree_photo.camera.id)
+        assert photo_data['width'] == tree_photo.dimensions[0]
+        assert photo_data['height'] == tree_photo.dimensions[1]
+        assert photo_data['objectTags'][0]['id'] == str(tree_photo_tag.id)
+        assert photo_data['objectTags'][0]['tag']['name'] == tree_tag.name
+        assert photo_data['url'].startswith('/thumbnails')
 
-    def test_filter_photos_by_date_api(self):
+    def test_filter_photos_by_date_api(self, api_client, setup_data):
         """Test photo filtering API by passing date with all scenarios."""
-        tree_tag, _ = Tag.objects.get_or_create(library=self.defaults['library'], name='Tree', type='O')
-        tree_photo_tag, _ = PhotoTag.objects.get_or_create(photo=self.defaults['tree_photo'], tag=tree_tag, confidence=1.0)
-        taken_at_date = self.defaults['snow_photo'].taken_at
-        # Filter photos by current year only example 'library_id:{0} 2021'
-        multi_filter = 'library_id:{0} {1}'.format(self.defaults['library'].id, taken_at_date.year)
+        tree_tag, _ = Tag.objects.get_or_create(library=setup_data['library'], name='Tree', type='O')
+        PhotoTag.objects.get_or_create(photo=setup_data['tree_photo'], tag=tree_tag, confidence=1.0)
+        taken_at_date = setup_data['snow_photo'].taken_at
         query = """
             query Photos($filters: String) {
                 allPhotos(multiFilter: $filters) {
@@ -581,60 +544,64 @@ class TestGraphQL(unittest.TestCase):
                 }
             }
         """
-        response = self.api_client.post_graphql(query, {'filters': multi_filter})
+
+        # Filter photos by current year only example 'library_id:{0} 2021'
+        multi_filter = 'library_id:{0} {1}'.format(setup_data['library'].id, taken_at_date.year)
+        response = api_client.post_graphql(query, {'filters': multi_filter})
         data = get_graphql_content(response)
-        self.assertEqual(len(data['data']['allPhotos']['edges']), 2)
-        self.assertEqual(data['data']['allPhotos']['edges'][1]['node']['id'], str(self.defaults['snow_photo'].id))
-        self.assertEqual(data['data']['allPhotos']['edges'][0]['node']['id'], str(self.defaults['tree_photo'].id))
+        assert len(data['data']['allPhotos']['edges']) == 2
+        assert data['data']['allPhotos']['edges'][1]['node']['id'] == str(setup_data['snow_photo'].id)
+        assert data['data']['allPhotos']['edges'][0]['node']['id'] == str(setup_data['tree_photo'].id)
+
         # Filter photos by month name only example 'library_id:{0} March 2017'
-        multi_filter = 'library_id:{0} {1} {2}'.format(self.defaults['library'].id, taken_at_date.strftime('%B').lower(),taken_at_date.year)
-        response = self.api_client.post_graphql(query, {'filters': multi_filter})
+        multi_filter = 'library_id:{0} {1} {2}'.format(setup_data['library'].id, taken_at_date.strftime('%B').lower(), taken_at_date.year)
+        response = api_client.post_graphql(query, {'filters': multi_filter})
         data = get_graphql_content(response)
-        self.assertEqual(len(data['data']['allPhotos']['edges']), 1)
+        assert len(data['data']['allPhotos']['edges']) == 1
 
         # Filter photos by first 3 letter of month name only example 'library_id:{0} Mar' 2017
-        multi_filter = 'library_id:{0} {1} {2}'.format(self.defaults['library'].id, taken_at_date.strftime('%b').lower(), taken_at_date.year)
-        response = self.api_client.post_graphql(query, {'filters': multi_filter})
+        multi_filter = 'library_id:{0} {1} {2}'.format(setup_data['library'].id, taken_at_date.strftime('%b').lower(), taken_at_date.year)
+        response = api_client.post_graphql(query, {'filters': multi_filter})
         data = get_graphql_content(response)
-        self.assertEqual(len(data['data']['allPhotos']['edges']), 1)
+        assert len(data['data']['allPhotos']['edges']) == 1
 
         # Filter photos by date and current month name. example 'library_id:{0} March 18 2017'
-        multi_filter = 'library_id:{0} {1} {2} {3}'.format(self.defaults['library'].id, taken_at_date.strftime('%b').lower(), taken_at_date.strftime("%d"), taken_at_date.year)
-        response = self.api_client.post_graphql(query, {'filters': multi_filter})
+        multi_filter = 'library_id:{0} {1} {2} {3}'.format(setup_data['library'].id, taken_at_date.strftime('%b').lower(), taken_at_date.strftime("%d"), taken_at_date.year)
+        response = api_client.post_graphql(query, {'filters': multi_filter})
         data = get_graphql_content(response)
-        self.assertEqual(len(data['data']['allPhotos']['edges']), 1)
+        assert len(data['data']['allPhotos']['edges']) == 1
 
         # Filter photos by date and current month name and year example 'library_id:{0} 18 March 2021'.
-        multi_filter = 'library_id:{0} {1} {2} {3}'.format(self.defaults['library'].id, taken_at_date.strftime("%d"), taken_at_date.strftime('%b').lower(), taken_at_date.year)
-        response = self.api_client.post_graphql(query, {'filters': multi_filter})
+        multi_filter = 'library_id:{0} {1} {2} {3}'.format(setup_data['library'].id, taken_at_date.strftime("%d"), taken_at_date.strftime('%b').lower(), taken_at_date.year)
+        response = api_client.post_graphql(query, {'filters': multi_filter})
         data = get_graphql_content(response)
-        self.assertEqual(len(data['data']['allPhotos']['edges']), 1)
+        assert len(data['data']['allPhotos']['edges']) == 1
 
         # Filter photos by date having some other words like in of etc example 'library_id:{0} party in mar 2021'.
-        multi_filter = 'library_id:{0} party in {1} {2}'.format(self.defaults['library'].id, taken_at_date.strftime('%b').lower(), taken_at_date.year)
-        response = self.api_client.post_graphql(query, {'filters': multi_filter})
+        multi_filter = 'library_id:{0} party in {1} {2}'.format(setup_data['library'].id, taken_at_date.strftime('%b').lower(), taken_at_date.year)
+        response = api_client.post_graphql(query, {'filters': multi_filter})
         data = get_graphql_content(response)
-        self.assertEqual(len(data['data']['allPhotos']['edges']), 0)# Because photos having this date but any photo not having party tag.
+        assert len(data['data']['allPhotos']['edges']) == 0  # Because photos having this date but any photo not having party tag.
 
         # Filter photos by date having some other words like in of etc and any tag name with date example 'library_id:{0} Tree in mar 2021'.
-        taken_at_date = self.defaults['tree_photo'].taken_at
-        multi_filter = 'library_id:{0} Tree in {1} {2}'.format(self.defaults['library'].id, taken_at_date.strftime('%b').lower(), taken_at_date.year)
-        response = self.api_client.post_graphql(query, {'filters': multi_filter})
+        taken_at_date = setup_data['tree_photo'].taken_at
+        multi_filter = 'library_id:{0} Tree in {1} {2}'.format(setup_data['library'].id, taken_at_date.strftime('%b').lower(), taken_at_date.year)
+        response = api_client.post_graphql(query, {'filters': multi_filter})
         data = get_graphql_content(response)
-        self.assertEqual(len(data['data']['allPhotos']['edges']), 1)
+        assert len(data['data']['allPhotos']['edges']) == 1
 
         # Filter photos by tag id and month name example 'library_id:{0} tag:id mar 2018'.
-        multi_filter = 'library_id:{0} tag:{1} {2} {3}'.format(self.defaults['library'].id, tree_tag.id, taken_at_date.strftime('%B').lower(), taken_at_date.year)
-        response = self.api_client.post_graphql(query, {'filters': multi_filter})
+        multi_filter = 'library_id:{0} tag:{1} {2} {3}'.format(setup_data['library'].id, tree_tag.id, taken_at_date.strftime('%B').lower(), taken_at_date.year)
+        response = api_client.post_graphql(query, {'filters': multi_filter})
         data = get_graphql_content(response)
-        self.assertEqual(len(data['data']['allPhotos']['edges']), 1)
+        assert len(data['data']['allPhotos']['edges']) == 1
 
-    def test_filter_photos_for_map_api(self):
+    def test_filter_photos_for_map_api(self, api_client, setup_data):
         """Test photo filtering API for map."""
-        tree_tag, _ = Tag.objects.get_or_create(library=self.defaults['library'], name='Tree', type='O')
-        tree_photo_tag, _ = PhotoTag.objects.get_or_create(photo=self.defaults['tree_photo'], tag=tree_tag, confidence=1.0)
-        taken_at_date = self.defaults['tree_photo'].taken_at
-        multi_filter = 'library_id:{0} tag:{1} {2} {3}'.format(self.defaults['library'].id, tree_tag.id, taken_at_date.strftime('%B').lower(),taken_at_date.year)
+        tree_tag, _ = Tag.objects.get_or_create(library=setup_data['library'], name='Tree', type='O')
+        PhotoTag.objects.get_or_create(photo=setup_data['tree_photo'], tag=tree_tag, confidence=1.0)
+        taken_at_date = setup_data['tree_photo'].taken_at
+        multi_filter = 'library_id:{0} tag:{1} {2} {3}'.format(setup_data['library'].id, tree_tag.id, taken_at_date.strftime('%B').lower(), taken_at_date.year)
         query = """
             query Photos($filters: String) {
                 mapPhotos(multiFilter: $filters) {
@@ -648,16 +615,16 @@ class TestGraphQL(unittest.TestCase):
                 }
               }
         """
-        response = self.api_client.post_graphql(query, {'filters': multi_filter})
+        response = api_client.post_graphql(query, {'filters': multi_filter})
         data = get_graphql_content(response)
-        self.assertEqual(len(data['data']['mapPhotos']['edges']), 1)
-        self.assertEqual(data['data']['mapPhotos']['edges'][0]['node']['id'], str(self.defaults['tree_photo'].id))
+        assert len(data['data']['mapPhotos']['edges']) == 1
+        assert data['data']['mapPhotos']['edges'][0]['node']['id'] == str(setup_data['tree_photo'].id)
         assert data['data']['mapPhotos']['edges'][0]['node']['url'].startswith('/thumbnails')
         assert data['data']['mapPhotos']['edges'][0]['node']['location']
 
-    def test_filter_with_exposure_range_api(self):
+    def test_filter_with_exposure_range_api(self, api_client, setup_data):
         """Test photo filtering by exposure_range example 1/1124."""
-        multi_filter = 'library_id:{0} exposure:1/4000-1/1600-1/1124-1/1000-1/800-1/500-1/400'.format(self.defaults['library'].id)
+        multi_filter = 'library_id:{0} exposure:1/4000-1/1600-1/1124-1/1000-1/800-1/500-1/400'.format(setup_data['library'].id)
         query = """
             query Photos($filters: String) {
                 mapPhotos(multiFilter: $filters) {
@@ -671,21 +638,19 @@ class TestGraphQL(unittest.TestCase):
                 }
               }
         """
-        response = self.api_client.post_graphql(query, {'filters': multi_filter})
+        response = api_client.post_graphql(query, {'filters': multi_filter})
         data = get_graphql_content(response)
         # mapPhotos query exclude(latitude__isnull=True, longitude__isnull=True) thats why result return only one photo.
-        self.assertEqual(len(data['data']['mapPhotos']['edges']), 1)
+        assert len(data['data']['mapPhotos']['edges']) == 1
 
-    def test_response_of_get_filters_api(self):
+    def test_response_of_get_filters_api(self, api_client, setup_data):
         """Test response of get filters api."""
-        object_type_tag, _ = Tag.objects.get_or_create(library=self.defaults['library'], name='Tree', type='O')
-        object_photo_tag, _ = PhotoTag.objects.get_or_create(photo=self.defaults['tree_photo'], tag=object_type_tag, confidence=1.0)
-        # object_photo_tag, _ = PhotoTag.objects.get_or_create(photo=self.defaults['snow_photo'], tag=tree_tag, confidence=1.0)
-        color_type_tag, _ = Tag.objects.get_or_create(library=self.defaults['library'], name='Yellow', type='C')
-        color_photo_tag, _ = PhotoTag.objects.get_or_create(photo=self.defaults['tree_photo'], tag=color_type_tag, confidence=1.0)
-        # object_photo_tag, _ = PhotoTag.objects.get_or_create(photo=self.defaults['snow_photo'], tag=tree_tag, confidence=1.0)
-        white_color_tag, _ = Tag.objects.get_or_create(library=self.defaults['library'], name='White', type='C')
-        white_color_photo_tag, _ = PhotoTag.objects.get_or_create(photo=self.defaults['snow_photo'], tag=white_color_tag, confidence=1.0)
+        object_type_tag, _ = Tag.objects.get_or_create(library=setup_data['library'], name='Tree', type='O')
+        PhotoTag.objects.get_or_create(photo=setup_data['tree_photo'], tag=object_type_tag, confidence=1.0)
+        color_type_tag, _ = Tag.objects.get_or_create(library=setup_data['library'], name='Yellow', type='C')
+        PhotoTag.objects.get_or_create(photo=setup_data['tree_photo'], tag=color_type_tag, confidence=1.0)
+        white_color_tag, _ = Tag.objects.get_or_create(library=setup_data['library'], name='White', type='C')
+        PhotoTag.objects.get_or_create(photo=setup_data['snow_photo'], tag=white_color_tag, confidence=1.0)
         multi_filter = 'aperture:1.3-10'
         query = """
             query AllFilters($libraryId: UUID, $multiFilter: String) {
@@ -738,35 +703,23 @@ class TestGraphQL(unittest.TestCase):
                 allShootingModes(libraryId: $libraryId)
               }
         """
-        response = self.api_client.post_graphql(query, {'libraryId': str(self.defaults['library'].id),'multiFilter': multi_filter})
+        response = api_client.post_graphql(query, {'libraryId': str(setup_data['library'].id), 'multiFilter': multi_filter})
         data = get_graphql_content(response)
-        self.assertEqual(len(data['data']['allObjectTags']), 1)
-        self.assertEqual(data['data']['allObjectTags'][0]['name'], object_type_tag.name)
-        self.assertEqual(len(data['data']['allColorTags']), 2)
-        self.assertEqual(data['data']['allColorTags'][0]['name'], white_color_tag.name)
-        self.assertEqual(data['data']['allColorTags'][1]['name'], color_type_tag.name)
-        self.assertEqual(data['data']['allApertures'][0], self.defaults['tree_photo'].aperture)
-        self.assertEqual(data['data']['allCameras'][0]['id'], str(self.defaults['snow_photo'].camera.id))
-        self.assertEqual(str(data['data']['allFocalLengths'][0]), self.defaults['snow_photo'].focal_length)
+        assert len(data['data']['allObjectTags']) == 1
+        assert data['data']['allObjectTags'][0]['name'] == object_type_tag.name
+        assert len(data['data']['allColorTags']) == 2
+        assert data['data']['allColorTags'][0]['name'] == white_color_tag.name
+        assert data['data']['allColorTags'][1]['name'] == color_type_tag.name
+        assert data['data']['allApertures'][0] == setup_data['tree_photo'].aperture
+        assert data['data']['allCameras'][0]['id'] == str(setup_data['snow_photo'].camera.id)
+        assert str(data['data']['allFocalLengths'][0]) == setup_data['snow_photo'].focal_length
 
 
 @pytest.mark.django_db
-class TestGraphQLOnboarding(unittest.TestCase):
+class TestGraphQLOnboarding:
     """Check onboarding(user sign up) process queries."""
 
-    @pytest.fixture(autouse=True)
-    def use_fixture(self, settings, api_client):
-        """Method to use unittest.TestCase and api_client fixture together in one class."""
-        settings.GRAPHQL_JWT = {
-            'JWT_SECRET_KEY': 'a-secret-key-for-tests',
-            'JWT_VERIFY_EXPIRATION': True,
-            'JWT_LONG_RUNNING_REFRESH_TOKEN': True,
-            'JWT_EXPIRATION_DELTA': datetime.timedelta(minutes=15),
-            'JWT_REFRESH_EXPIRATION_DELTA': datetime.timedelta(days=365),
-        }
-        self.api_client = api_client
-
-    def test_onboarding_steps(self):
+    def test_onboarding_steps(self, api_client):
         """Check all the steps of onboarding(user sign up) process."""
         environment_query = """
             query{
@@ -780,12 +733,12 @@ class TestGraphQLOnboarding(unittest.TestCase):
                 }
             }
         """
-        response = self.api_client.post_graphql(environment_query)
+        response = api_client.post_graphql(environment_query)
         data = get_graphql_content(response)
         assert response.status_code == 200
         assert data['data']['environment']['firstRun']
         assert data['data']['environment']['form'] == 'has_set_personal_info'
-        self.assertFalse(User.objects.all().count())
+        assert not User.objects.all().count()
         mutation = """
             mutation ($username: String!,$password:String!,$password1:String!) {
                 createUser(username: $username,password:$password,password1:$password1) {
@@ -794,17 +747,17 @@ class TestGraphQLOnboarding(unittest.TestCase):
                 }
             }
         """
-        response = self.api_client.post_graphql(
+        response = api_client.post_graphql(
             mutation, {'username': 'demo', 'password': 'demo12345', 'password1': 'demo12345'})
         data = get_graphql_content(response)
         assert response.status_code == 200
         assert data['data']['createUser']['hasSetPersonalInfo']
         assert User.objects.all().count() == 1
         assert User.objects.first().has_set_personal_info
-        self.assertFalse(User.objects.first().has_created_library)
-        self.assertFalse(response.wsgi_request.user.username)
+        assert not User.objects.first().has_created_library
+        assert not response.wsgi_request.user.username
         mutation = """
-            mutation ($name: String!,$backendType: String!,$path: String!,$userId: ID!) 
+            mutation ($name: String!,$backendType: String!,$path: String!,$userId: ID!)
                 {
                     createLibrary(input:{
                         name:$name,
@@ -819,7 +772,7 @@ class TestGraphQLOnboarding(unittest.TestCase):
                     }
                 }
         """
-        response = self.api_client.post_graphql(
+        response = api_client.post_graphql(
             mutation, {
                 'name': 'demo library', 'backendType': 'Lo',
                 'path': '/data/photos', 'userId': data['data']['createUser']['userId'],
@@ -828,7 +781,7 @@ class TestGraphQLOnboarding(unittest.TestCase):
         assert response.status_code == 200
         assert data['data']['createLibrary']['hasCreatedLibrary']
         assert User.objects.first().has_created_library
-        self.assertFalse(User.objects.first().has_configured_importing)
+        assert not User.objects.first().has_configured_importing
         mutation = """
             mutation ($watchForChanges: Boolean!,$addAnotherPath: Boolean!,$importPath: String!,
                 $deleteAfterImport: Boolean!,$userId: ID!,$libraryId: ID!,$libraryPathId: ID!)
@@ -848,7 +801,7 @@ class TestGraphQLOnboarding(unittest.TestCase):
                     }
                 }
         """
-        response = self.api_client.post_graphql(
+        response = api_client.post_graphql(
             mutation, {
                 'watchForChanges': True, 'addAnotherPath': True,
                 'importPath': '/data/photos', 'deleteAfterImport': True,
@@ -860,7 +813,7 @@ class TestGraphQLOnboarding(unittest.TestCase):
         assert response.status_code == 200
         assert data['data']['PhotoImporting']['hasConfiguredImporting']
         assert User.objects.first().has_configured_importing
-        self.assertFalse(User.objects.first().has_configured_image_analysis)
+        assert not User.objects.first().has_configured_image_analysis
         mutation = """
             mutation (
                 $classificationColorEnabled: Boolean!,
@@ -885,7 +838,7 @@ class TestGraphQLOnboarding(unittest.TestCase):
                 }
         """
         library_id = data['data']['PhotoImporting']['libraryId']
-        response = self.api_client.post_graphql(
+        response = api_client.post_graphql(
             mutation, {
                 'classificationColorEnabled': True,
                 'classificationStyleEnabled': True,
@@ -902,12 +855,10 @@ class TestGraphQLOnboarding(unittest.TestCase):
         assert data['data']['imageAnalysis']['hasConfiguredImageAnalysis']
         assert library.classification_color_enabled
         assert library.classification_style_enabled
-        self.assertFalse(library.classification_object_enabled)
-        self.assertFalse(library.classification_location_enabled)
-        self.assertTrue(
-            User.objects.filter(
-                username='demo', has_set_personal_info=True,
-                has_created_library=True, has_configured_importing=True,
-                has_configured_image_analysis=True).exists()
-        )
+        assert not library.classification_object_enabled
+        assert not library.classification_location_enabled
+        assert User.objects.filter(
+            username='demo', has_set_personal_info=True,
+            has_created_library=True, has_configured_importing=True,
+            has_configured_image_analysis=True).exists()
         assert response.wsgi_request.user.username == 'demo'

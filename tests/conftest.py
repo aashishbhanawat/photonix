@@ -112,17 +112,6 @@ class ApiClient(Client):
         return super().post(API_PATH, *args, **kwargs)
 
 
-@pytest.fixture(autouse=True)
-def force_static_jwt_secret_key(monkeypatch):
-    """
-    Force a static JWT secret key for all tests by directly modifying the
-    cached settings object.
-    """
-    monkeypatch.setattr(
-        'graphql_jwt.settings.jwt_settings.JWT_SECRET_KEY',
-        'a-secret-key-for-tests'
-    )
-
 @pytest.fixture
 def api_client():
     return ApiClient(user=AnonymousUser())
