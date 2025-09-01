@@ -21,7 +21,8 @@ def django_db_modify_db_settings(django_db_modify_db_settings,):
     os.environ['ENV'] = 'test'
     settings.DATABASES['default'] = {
         'ENGINE':   'django.db.backends.sqlite3',
-        'NAME':     ':memory:'
+        'NAME':     ':memory:',
+        'ATOMIC_REQUESTS': True,
     }
 
 
@@ -110,6 +111,16 @@ class ApiClient(Client):
             self.user.user_permissions.add(*permissions)
         return super().post(API_PATH, *args, **kwargs)
 
+
+from graphql_jwt.settings import jwt_settings
+
+@pytest.fixture(autouse=True)
+def force_static_jwt_secret_key():
+    """
+    Force a static JWT secret key for all tests. This prevents "Error decoding
+    signature" failures by directly modifying the cached settings object.
+    """
+    jwt_settings.JWT_SECRET_KEY = 'a-secret-key-for-tests'
 
 @pytest.fixture
 def api_client():
