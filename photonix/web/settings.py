@@ -89,6 +89,7 @@ DATABASES = {
         'USER':     os.environ.get('POSTGRES_USER', 'photonix'),
         'PASSWORD': os.environ.get('POSTGRES_PASSWORD', 'password'),
         'PORT':     int(os.environ.get('POSTGRES_PORT', '5432')),
+        'ATOMIC_REQUESTS': True,
     }
 }
 

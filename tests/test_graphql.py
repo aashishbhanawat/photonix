@@ -2,8 +2,7 @@
 import datetime
 import os
 from pathlib import Path
-import unittest
-
+from django.test import override_settings, TestCase
 import pytest
 
 from .factories import LibraryUserFactory
@@ -13,7 +12,14 @@ from photonix.photos.utils.db import record_photo
 from photonix.accounts.models import User
 
 
-class TestGraphQL(unittest.TestCase):
+@override_settings(GRAPHQL_JWT={
+    'JWT_SECRET_KEY': 'a-secret-key-for-tests',
+    'JWT_VERIFY_EXPIRATION': True,
+    'JWT_LONG_RUNNING_REFRESH_TOKEN': True,
+    'JWT_EXPIRATION_DELTA': datetime.timedelta(minutes=15),
+    'JWT_REFRESH_EXPIRATION_DELTA': datetime.timedelta(days=365),
+})
+class TestGraphQL(TestCase):
     """Test cases for graphql API's."""
 
     _library_user = None
@@ -746,8 +752,15 @@ class TestGraphQL(unittest.TestCase):
         self.assertEqual(str(data['data']['allFocalLengths'][0]), self.defaults['snow_photo'].focal_length)
 
 
+@override_settings(GRAPHQL_JWT={
+    'JWT_SECRET_KEY': 'a-secret-key-for-tests',
+    'JWT_VERIFY_EXPIRATION': True,
+    'JWT_LONG_RUNNING_REFRESH_TOKEN': True,
+    'JWT_EXPIRATION_DELTA': datetime.timedelta(minutes=15),
+    'JWT_REFRESH_EXPIRATION_DELTA': datetime.timedelta(days=365),
+})
 @pytest.mark.django_db
-class TestGraphQLOnboarding(unittest.TestCase):
+class TestGraphQLOnboarding(TestCase):
     """Check onboarding(user sign up) process queries."""
 
     @pytest.fixture(autouse=True)

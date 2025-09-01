@@ -10,6 +10,8 @@ from django.utils.timezone import utc
 
 from photonix.photos.models import Camera, Lens, Photo, PhotoFile, Task, Library, Tag, PhotoTag
 from photonix.photos.utils.metadata import PhotoMetadata, parse_datetime, parse_gps_location, get_mimetype
+from photonix.photos.utils.raw import NON_RAW_MIMETYPES
+from photonix.photos.tasks import process_raw_task
 from photonix.web.utils import logger
 
 
@@ -192,13 +194,17 @@ def record_photo(path, library, inotify_event_type=None):
     photo_file.preferred = False  # TODO
     photo_file.save()
 
-    # Create task to ensure JPEG version of file exists (used for thumbnailing, analysing etc.)
-    Task(
-        type='ensure_raw_processed',
-        subject_id=photo.id,
-        complete_with_children=True,
-        library=photo.library
-    ).save()
+    # If the file is a RAW file, dispatch a task to convert it to JPEG.
+    if photo_file.mimetype not in NON_RAW_MIMETYPES:
+        logger.info(f"Dispatching RAW processing task for PhotoFile {photo_file.id}")
+        process_raw_task.delay(photo_file.id)
+    else:
+        # If it's already a JPEG or other standard format, we can kick off the next step.
+        # TODO: Trigger the next task in the pipeline (thumbnailing)
+        # This will be implemented in Task 1.3
+        # from .tasks import generate_thumbnails_task
+        # generate_thumbnails_task.delay(photo.id)
+        pass
 
     return photo
 

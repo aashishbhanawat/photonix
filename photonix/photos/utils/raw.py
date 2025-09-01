@@ -27,61 +27,6 @@ NON_RAW_MIMETYPES = [
 ]
 
 
-def ensure_raw_processing_tasks():
-    for task in Task.objects.filter(type='ensure_raw_processed', status='P').order_by('created_at'):
-        photo_id = task.subject_id
-        ensure_raw_processed(photo_id, task)
-
-
-def ensure_raw_processed(photo_id, task):
-    task.start()
-    photo = Photo.objects.get(id=photo_id)
-    has_raw_photos = False
-
-    for photo_file in photo.files.all():
-        # TODO: Make raw photo detection better
-        if photo_file.mimetype not in NON_RAW_MIMETYPES:
-            has_raw_photos = True
-            Task(type='process_raw', subject_id=photo_file.id, parent=task, library=photo_file.photo.library).save()
-
-    # Complete and add next task to generate thumbnails
-    if not has_raw_photos:
-        task.complete(next_type='generate_thumbnails', next_subject_id=photo_id)
-
-
-def process_raw_tasks():
-    for task in Task.objects.filter(type='process_raw', status='P').order_by('created_at'):
-        photo_file_id = task.subject_id
-        process_raw_task(photo_file_id, task)
-
-
-def process_raw_task(photo_file_id, task):
-    task.start()
-    photo_file = PhotoFile.objects.get(id=photo_file_id)
-    output_path, version, process_params, external_version = generate_jpeg(photo_file.path)
-
-    if not output_path:
-        task.failed('Could not generate JPEG')
-        return
-
-    if not os.path.isdir(settings.PHOTO_RAW_PROCESSED_DIR):
-        os.mkdir(settings.PHOTO_RAW_PROCESSED_DIR)
-    destination_path = Path(settings.PHOTO_RAW_PROCESSED_DIR) / str('{}.jpg'.format(photo_file.id))
-    shutil.move(output_path, str(destination_path))
-
-    photo_file.raw_processed = True
-    photo_file.raw_version = version
-    photo_file.raw_external_params = process_params
-    photo_file.raw_external_version = external_version
-
-    if not photo_file.width or not photo_file.height:
-        width, height = get_dimensions(photo_file.base_image_path)
-        photo_file.width = width
-        photo_file.height = height
-
-    photo_file.save()
-
-    task.complete(next_type='generate_thumbnails', next_subject_id=photo_file.photo.id)
 
 
 def __get_generated_image(temp_dir, basename):

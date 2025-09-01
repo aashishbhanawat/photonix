@@ -1,3 +1,4 @@
+from datetime import timedelta
 import json
 import os
 
@@ -21,7 +22,8 @@ def django_db_modify_db_settings(django_db_modify_db_settings,):
     os.environ['ENV'] = 'test'
     settings.DATABASES['default'] = {
         'ENGINE':   'django.db.backends.sqlite3',
-        'NAME':     ':memory:'
+        'NAME':     ':memory:',
+        'ATOMIC_REQUESTS': True,
     }
 
 
@@ -114,3 +116,17 @@ class ApiClient(Client):
 @pytest.fixture
 def api_client():
     return ApiClient(user=AnonymousUser())
+
+
+from graphql_jwt.settings import jwt_settings
+
+@pytest.fixture(autouse=True)
+def force_static_jwt_secret_key(monkeypatch):
+    """
+    Force a static JWT secret key for all tests. This prevents "Error decoding
+    signature" failures by directly modifying the cached settings object.
+    """
+    monkeypatch.setattr(
+        'graphql_jwt.settings.jwt_settings.JWT_SECRET_KEY',
+        'a-secret-key-for-tests'
+    )
