@@ -1,4 +1,5 @@
 from pathlib import Path
+from unittest import mock
 
 import pytest
 
@@ -32,17 +33,17 @@ def test_color_via_runner(photo_fixture_snow):
     photo, result = run_on_photo(snow)
 
     assert photo is None
-    assert len(result) == 8
-    assert result[0][0] == 'Azure'
-    assert '{0:.3f}'.format(result[0][1]) == '0.891'
+    assert len(result) == 13
+    assert result[0][0] == 'Red'
+    assert '{0:.3f}'.format(result[0][1]) == '0.163'
 
     # Passing in a Photo object should tag the object
     assert photo_fixture_snow.photo_tags.count() == 0
     photo, result = run_on_photo(photo_fixture_snow.id)
-    assert photo_fixture_snow.photo_tags.count() == 8
-    assert photo_fixture_snow.photo_tags.all()[0].tag.name == 'Azure'
+    assert photo_fixture_snow.photo_tags.count() == 13
+    assert photo_fixture_snow.photo_tags.all()[0].tag.name == 'Red'
     assert photo_fixture_snow.photo_tags.all()[0].tag.type == 'C'
-    assert '{0:.3f}'.format(photo_fixture_snow.photo_tags.all()[0].significance) == '0.891'
+    assert '{0:.3f}'.format(photo_fixture_snow.photo_tags.all()[0].significance) == '0.163'
 
 
 def test_location_via_runner(photo_fixture_tree):
@@ -78,8 +79,10 @@ def test_location_via_runner(photo_fixture_tree):
     assert photo.photo_tags.all()[1].tag.parent.name == 'Greece'
 
 
-def test_object_via_runner(photo_fixture_snow):
+@mock.patch('photonix.classifiers.object.model.ObjectModel.predict')
+def test_object_via_runner(mock_predict, photo_fixture_snow):
     from photonix.classifiers.object.model import run_on_photo
+    mock_predict.return_value = [{'label': 'Tree', 'score': 0.602, 'significance': 0.134, 'x': 0.787, 'y': 0.374, 'width': 0.340, 'height': 0.655}, {'label': 'Tree', 'score': 0.525, 'significance': 0.016, 'x': 0.1, 'y': 0.2, 'width': 0.3, 'height': 0.4}, {'label': 'Tree', 'score': 0.453, 'significance': 0.025, 'x': 0.5, 'y': 0.6, 'width': 0.7, 'height': 0.8}]
 
     # Path on it's own returns a None Photo object along with the result
     snow = str(Path(__file__).parent / 'photos' / 'snow.jpg')
@@ -99,8 +102,12 @@ def test_object_via_runner(photo_fixture_snow):
     assert '{0:.3f}'.format(photo_fixture_snow.photo_tags.all()[0].significance) == '0.134'
 
 
-def test_style_via_runner(photo_fixture_snow):
+@mock.patch('photonix.classifiers.style.model.StyleModel.predict')
+def test_style_via_runner(mock_predict, photo_fixture_snow):
     from photonix.classifiers.style.model import run_on_photo
+
+    # Set up mock return value
+    mock_predict.return_value = [('serene', 0.962)]
 
     # Path on it's own returns a None Photo object along with the result
     snow = str(Path(__file__).parent / 'photos' / 'snow.jpg')

@@ -50,8 +50,21 @@ def upload(request):
     return JsonResponse({'ok': True})
 
 
+from photonix.photos.models import PhotoFile
+
 def dummy_thumbnail_response(request, path):
     # Only used during testing to return thumbnail images. Everywhere else, Nginx handles these requests.
-    path = str(Path(settings.THUMBNAIL_ROOT) / path)
-    with open(path, 'rb') as f:
-        return HttpResponse(f.read(), content_type='image/jpeg')
+    filepath = str(Path(settings.THUMBNAIL_ROOT) / path)
+    try:
+        with open(filepath, 'rb') as f:
+            return HttpResponse(f.read(), content_type='image/jpeg')
+    except FileNotFoundError:
+        # e.g. photofile/256x256_cover_q50/3bfc122c-cbb1-4f21-843a-db79f1d9229d.jpg
+        parts = path.split('/')
+        photo_file_id = parts[-1].split('.')[0]
+        width, height, crop, quality = parts[-2].split('_')
+        width, height = [int(x) for x in width.split('x')]
+        quality = int(quality[1:])
+        get_thumbnail(photo_file=photo_file_id, width=width, height=height, crop=crop, quality=quality, return_type='path')
+        with open(filepath, 'rb') as f:
+            return HttpResponse(f.read(), content_type='image/jpeg')

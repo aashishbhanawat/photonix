@@ -65,7 +65,7 @@ def record_photo(path, library, inotify_event_type=None):
 
     camera = None
     camera_make = metadata.get('Make', '')[:Camera.make.field.max_length]
-    camera_model = metadata.get('Camera Model Name', '')
+    camera_model = metadata.get('Camera Model Name') or metadata.get('Model', '')
     if camera_model:
         camera_model = camera_model.replace(camera_make, '').strip()
     camera_model = camera_model[:Camera.model.field.max_length]

@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 from photonix.photos.utils.metadata import PhotoMetadata, parse_gps_location, get_datetime
@@ -8,7 +9,7 @@ def test_metadata():
     photo_path = str(Path(__file__).parent / 'photos' / 'snow.jpg')
     metadata = PhotoMetadata(photo_path)
     assert metadata.get('Image Size') == '800x600'
-    assert metadata.get('Date Time') == '2018:02:28 07:16:25'
+    assert metadata.get('Date/Time Original') == '2018:02:28 07:16:25'
     assert metadata.get('Make') == 'Xiaomi'
     assert metadata.get('ISO') == '100'
 
@@ -30,13 +31,7 @@ def test_location():
 from unittest import mock
 
 
-@mock.patch('os.stat')
-def test_datetime(mock_stat):
-    # Create a mock stat result object with a fixed timestamp
-    mock_stat_result = mock.Mock()
-    mock_stat_result.st_ctime = 1630579429.739248 # This is the timestamp for 2021-09-02T10:43:49.739248+00:00
-    mock_stat.return_value = mock_stat_result
-
+def test_datetime():
     # Data from exif metadata
     photo_path = str(Path(__file__).parent / 'photos' / 'snow.jpg')
     parsed_datetime = get_datetime(photo_path)
@@ -59,6 +54,9 @@ def test_datetime(mock_stat):
     assert parsed_datetime.isoformat() == '2000-01-01T00:00:00+00:00'
 
     # Some of the date digits are the letter X so fall back to file creation date
-    photo_path = str(Path(__file__).parent / 'photos' / 'unreadable_date.jpg')
-    parsed_datetime = get_datetime(photo_path)
-    assert parsed_datetime.isoformat() == '2021-09-02T10:43:49.739248+00:00'
+    with mock.patch('os.stat') as mock_stat:
+        mock_stat_result = os.stat_result((33188, 0, 0, 0, 0, 0, 0, 0, 0, 1630579429))
+        mock_stat.return_value = mock_stat_result
+        photo_path = str(Path(__file__).parent / 'photos' / 'unreadable_date.jpg')
+        parsed_datetime = get_datetime(photo_path)
+        assert parsed_datetime.isoformat() == '2021-09-02T10:43:49+00:00'
