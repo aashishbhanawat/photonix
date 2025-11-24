@@ -12,9 +12,11 @@ class Command(BaseCommand):
 
     def run_scheduler(self):
         while True:
-            num_remaining = Task.objects.filter(type='ensure_raw_processed', status='P').count()
+            num_remaining = Task.objects.filter(
+                type='ensure_raw_processed', status='P').count()
             if num_remaining:
-                logger.info(f'{num_remaining} tasks remaining for raw process scheduling')
+                logger.info(
+                    f'{num_remaining} tasks remaining for raw process scheduling')
                 ensure_raw_processing_tasks()
                 logger.info('Finished raw process scheduling')
             sleep(1)

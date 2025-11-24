@@ -13,6 +13,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='photo',
             name='star_rating',
-            field=models.PositiveIntegerField(default=0, help_text='assign rating to photo', verbose_name='Rating'),
+            field=models.PositiveIntegerField(
+                default=0, help_text='assign rating to photo', verbose_name='Rating'),
         ),
     ]

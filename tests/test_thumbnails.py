@@ -1,12 +1,13 @@
 import os
 from pathlib import Path
 
+import pytest
 from django.conf import settings
 from django.test import Client
-import pytest
+
+from photonix.photos.utils.thumbnails import get_thumbnail, get_thumbnail_path
 
 from .factories import LibraryFactory
-from photonix.photos.utils.thumbnails import get_thumbnail, get_thumbnail_path
 
 
 @pytest.fixture
@@ -25,13 +26,16 @@ def test_generate_thumbnail(photo_fixture_snow):
     assert quality == 50
 
     # Should generate image thumbnail and return bytes as we specified in the return_type
-    result = get_thumbnail(photo_fixture_snow.base_file.id, width=width, height=height, crop=crop, quality=quality, return_type='bytes')
+    result = get_thumbnail(photo_fixture_snow.base_file.id, width=width,
+                           height=height, crop=crop, quality=quality, return_type='bytes')
     assert result[:10] == b'\xff\xd8\xff\xe0\x00\x10JFIF'
 
     # It should also have saved the thumbnail data down to disk
-    path = get_thumbnail_path(photo_fixture_snow.base_file.id, width, height, crop, quality)
+    path = get_thumbnail_path(
+        photo_fixture_snow.base_file.id, width, height, crop, quality)
     assert os.path.exists(path)
-    assert str(path).endswith(str(Path('cache') / 'thumbnails' / 'photofile' / '256x256_cover_q50' / '{}.jpg'.format(str(photo_fixture_snow.base_file.id))))
+    assert str(path).endswith(str(Path('cache') / 'thumbnails' / 'photofile' /
+                                  '256x256_cover_q50' / '{}.jpg'.format(str(photo_fixture_snow.base_file.id))))
     assert len(result) == os.stat(path).st_size
     assert os.stat(path).st_size > 5929 * 0.8
     assert os.stat(path).st_size < 5929 * 1.2
@@ -40,12 +44,14 @@ def test_generate_thumbnail(photo_fixture_snow):
 def test_view(photo_fixture_snow):
     # Start with no thumbnail on disk
     width, height, crop, quality, _, _ = settings.THUMBNAIL_SIZES[0]
-    path = get_thumbnail_path(photo_fixture_snow.base_file.id, width, height, crop, quality)
+    path = get_thumbnail_path(
+        photo_fixture_snow.base_file.id, width, height, crop, quality)
     assert not os.path.exists(path)
 
     # Make a web request to the thumbnail API
     client = Client()
-    url = '/thumbnailer/photo/256x256_cover_q50/{}/'.format(photo_fixture_snow.id)
+    url = '/thumbnailer/photo/256x256_cover_q50/{}/'.format(
+        photo_fixture_snow.id)
     response = client.get(url)
 
     # We should get a 302 redirect back

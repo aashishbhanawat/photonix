@@ -16,21 +16,25 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='user',
             name='has_set_personal_info',
-            field=models.BooleanField(default=False, help_text='User has set their personal info'),
+            field=models.BooleanField(
+                default=False, help_text='User has set their personal info'),
         ),
         migrations.AlterField(
             model_name='user',
             name='has_configured_image_analysis',
-            field=models.BooleanField(default=False, help_text='User has configured image analysis'),
+            field=models.BooleanField(
+                default=False, help_text='User has configured image analysis'),
         ),
         migrations.AlterField(
             model_name='user',
             name='has_configured_importing',
-            field=models.BooleanField(default=False, help_text='User has configured photo importing'),
+            field=models.BooleanField(
+                default=False, help_text='User has configured photo importing'),
         ),
         migrations.AlterField(
             model_name='user',
             name='has_created_library',
-            field=models.BooleanField(default=False, help_text='User has created a library'),
+            field=models.BooleanField(
+                default=False, help_text='User has created a library'),
         ),
     ]

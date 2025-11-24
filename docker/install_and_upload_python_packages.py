@@ -3,7 +3,6 @@ import os
 import re
 import subprocess
 
-
 os.environ['PYTHONUNBUFFERED'] = '1'
 
 
@@ -22,7 +21,8 @@ class LineProcessor:
                 self.whl_name = line.split('filename=')[1].split(' ')[0]
             if 'Stored in directory' in line:
                 self.folder = line.split('Stored in directory:')[1].strip()
-                child = subprocess.Popen(['pypiupload', 'files', f'{self.folder}/{self.whl_name}', '-i', 'epix', '-u', self.username, '-p', self.password], stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=self.env)
+                child = subprocess.Popen(['pypiupload', 'files', f'{self.folder}/{self.whl_name}', '-i', 'epix', '-u',
+                                         self.username, '-p', self.password], stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=self.env)
                 for child_line in child.stdout:
                     child_line = child_line.rstrip().decode('utf-8')
                     print(child_line)
@@ -50,11 +50,16 @@ def install_and_upload(username=None, password=None):
             dependency = f'https://pypi.epixstudios.co.uk/packages/tensorflow-{tf_version}-cp38-cp38-linux_x86_64.whl'
 
         if dependency and not dependency.startswith('#'):
-            cmd = ['/usr/local/bin/pip', 'install', '--no-cache-dir', dependency]
-            env = dict(os.environ)  # Need to pass all envvars down to subprocesses or we get compilation errors for C extensions
-            env['PYTHONUNBUFFERED'] = '1'  # Without this we don't get real-time output from Python-based subprocesses
-            proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=env)
-            processor = LineProcessor(username=username, password=password, env=env)
+            cmd = ['/usr/local/bin/pip', 'install',
+                   '--no-cache-dir', dependency]
+            # Need to pass all envvars down to subprocesses or we get compilation errors for C extensions
+            env = dict(os.environ)
+            # Without this we don't get real-time output from Python-based subprocesses
+            env['PYTHONUNBUFFERED'] = '1'
+            proc = subprocess.Popen(
+                cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=env)
+            processor = LineProcessor(
+                username=username, password=password, env=env)
 
             for line in proc.stdout:
                 line = line.rstrip().decode('utf-8')

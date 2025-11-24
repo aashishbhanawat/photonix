@@ -5,9 +5,9 @@ import subprocess
 import tempfile
 from pathlib import Path
 
+from django.conf import settings
 from PIL import Image
 
-from django.conf import settings
 from photonix.photos.models import Photo, PhotoFile, Task
 from photonix.web.utils import logger
 
@@ -42,11 +42,13 @@ def ensure_raw_processed(photo_id, task):
         # TODO: Make raw photo detection better
         if photo_file.mimetype not in NON_RAW_MIMETYPES:
             has_raw_photos = True
-            Task(type='process_raw', subject_id=photo_file.id, parent=task, library=photo_file.photo.library).save()
+            Task(type='process_raw', subject_id=photo_file.id,
+                 parent=task, library=photo_file.photo.library).save()
 
     # Complete and add next task to generate thumbnails
     if not has_raw_photos:
-        task.complete(next_type='generate_thumbnails', next_subject_id=photo_id)
+        task.complete(next_type='generate_thumbnails',
+                      next_subject_id=photo_id)
 
 
 def process_raw_tasks():
@@ -58,7 +60,8 @@ def process_raw_tasks():
 def process_raw_task(photo_file_id, task):
     task.start()
     photo_file = PhotoFile.objects.get(id=photo_file_id)
-    output_path, version, process_params, external_version = generate_jpeg(photo_file.path)
+    output_path, version, process_params, external_version = generate_jpeg(
+        photo_file.path)
 
     if not output_path:
         task.failed('Could not generate JPEG')
@@ -66,7 +69,8 @@ def process_raw_task(photo_file_id, task):
 
     if not os.path.isdir(settings.PHOTO_RAW_PROCESSED_DIR):
         os.makedirs(settings.PHOTO_RAW_PROCESSED_DIR)
-    destination_path = Path(settings.PHOTO_RAW_PROCESSED_DIR) / str('{}.jpg'.format(photo_file.id))
+    destination_path = Path(settings.PHOTO_RAW_PROCESSED_DIR) / \
+        str('{}.jpg'.format(photo_file.id))
     shutil.move(output_path, str(destination_path))
 
     photo_file.raw_processed = True
@@ -81,13 +85,15 @@ def process_raw_task(photo_file_id, task):
 
     photo_file.save()
 
-    task.complete(next_type='generate_thumbnails', next_subject_id=photo_file.photo.id)
+    task.complete(next_type='generate_thumbnails',
+                  next_subject_id=photo_file.photo.id)
 
 
 def __get_generated_image(temp_dir, basename):
     for fn in os.listdir(temp_dir):
         if fn != basename:
             return Path(temp_dir) / fn
+
 
 def __get_exiftool_image(temp_dir, basename):
     """
@@ -102,6 +108,7 @@ def __get_exiftool_image(temp_dir, basename):
         if fn.endswith('.jpg'):
             exiftool_files['output']: Path(temp_dir) / fn
     return exiftool_files
+
 
 def __has_acceptable_dimensions(original_image_path, new_image_path, accept_empty_original_dimensions=False):
     logger.debug('Checking image dimensions')
@@ -131,9 +138,9 @@ def __has_acceptable_dimensions(original_image_path, new_image_path, accept_empt
 
     # Embedded image within 95% of the raw width and height
     if original_image_dimensions[0] / new_image_dimensions[0] > 0.95 \
-        and original_image_dimensions[1] / new_image_dimensions[1] > 0.95 \
-        and new_image_dimensions[0] / original_image_dimensions[0] > 0.95 \
-        and new_image_dimensions[1] / original_image_dimensions[1] > 0.95:
+            and original_image_dimensions[1] / new_image_dimensions[1] > 0.95 \
+            and new_image_dimensions[0] / original_image_dimensions[0] > 0.95 \
+            and new_image_dimensions[1] / original_image_dimensions[1] > 0.95:
         logger.debug('Dimensions match closely enough')
         return True
 
@@ -142,7 +149,8 @@ def __has_acceptable_dimensions(original_image_path, new_image_path, accept_empt
 
 
 def identified_as_jpeg(path):
-    output = subprocess.Popen(['file', path], stdout=subprocess.PIPE, stdin=subprocess.PIPE, stderr=subprocess.PIPE).communicate()[0].decode('utf-8')
+    output = subprocess.Popen(['file', path], stdout=subprocess.PIPE,
+                              stdin=subprocess.PIPE, stderr=subprocess.PIPE).communicate()[0].decode('utf-8')
     return 'JPEG image data' in output
 
 
@@ -153,7 +161,8 @@ def bitmap_to_jpeg(input_path, output_path, quality=75):
 
 
 def __dcraw_version():
-    output = subprocess.Popen(['dcraw'], stdout=subprocess.PIPE, stdin=subprocess.PIPE, stderr=subprocess.PIPE).communicate()[0].decode('utf-8')
+    output = subprocess.Popen(['dcraw'], stdout=subprocess.PIPE, stdin=subprocess.PIPE,
+                              stderr=subprocess.PIPE).communicate()[0].decode('utf-8')
     for line in output.split('\n'):
         if 'Raw photo decoder "dcraw"' in line:
             try:
@@ -163,7 +172,8 @@ def __dcraw_version():
 
 
 def __heif_convert_version():
-    output = subprocess.Popen(['dpkg', '-s', 'libheif-examples'], stdout=subprocess.PIPE, stdin=subprocess.PIPE, stderr=subprocess.PIPE).communicate()[0].decode('utf-8')
+    output = subprocess.Popen(['dpkg', '-s', 'libheif-examples'], stdout=subprocess.PIPE,
+                              stdin=subprocess.PIPE, stderr=subprocess.PIPE).communicate()[0].decode('utf-8')
     for line in output.split('\n'):
         if 'Version: ' in line:
             try:
@@ -173,13 +183,15 @@ def __heif_convert_version():
 
 
 def __exiftool_version():
-    output = subprocess.Popen(['dpkg', '-s', 'libimage-exiftool-perl'], stdout=subprocess.PIPE, stdin=subprocess.PIPE, stderr=subprocess.PIPE).communicate()[0].decode('utf-8')
+    output = subprocess.Popen(['dpkg', '-s', 'libimage-exiftool-perl'], stdout=subprocess.PIPE,
+                              stdin=subprocess.PIPE, stderr=subprocess.PIPE).communicate()[0].decode('utf-8')
     for line in output.split('\n'):
         if 'Version: ' in line:
             try:
                 return re.search(r'([0-9]+.[0-9]+.[0-9]+)', line).group(1)
             except AttributeError:
                 return
+
 
 def __delete_file_silently(path):
     try:
@@ -224,7 +236,8 @@ def generate_jpeg(path):
     elif mimetype in ['image/heif', 'image/heic']:
         logger.debug('File type detected as HIEF/HEIC')
         temp_output_path = Path(temp_dir) / 'out.jpg'
-        subprocess.run(['heif-convert', '-q', '90', temp_input_path, temp_output_path])
+        subprocess.run(['heif-convert', '-q', '90',
+                       temp_input_path, temp_output_path])
         process_params = 'heif-convert -q 90'
         external_version = __heif_convert_version()
     else:
@@ -245,7 +258,8 @@ def generate_jpeg(path):
 
     # Next try to use embedded profile to generate an image
     if not valid_image:
-        logger.debug('Attempting to generate JPEG with dcraw using embedded color profile')
+        logger.debug(
+            'Attempting to generate JPEG with dcraw using embedded color profile')
         subprocess.run(['dcraw', '-p embed', temp_input_path])
         temp_output_path = __get_generated_image(temp_dir, basename)
 
@@ -259,7 +273,8 @@ def generate_jpeg(path):
 
     # Finally try to use the embedded whitebalance to generate an image
     if not valid_image:
-        logger.debug('Attempting to generate JPEG with dcraw using embedded white balance')
+        logger.debug(
+            'Attempting to generate JPEG with dcraw using embedded white balance')
         subprocess.run(['dcraw', '-w', temp_input_path])
         temp_output_path = __get_generated_image(temp_dir, basename)
 
@@ -276,7 +291,8 @@ def generate_jpeg(path):
         valid_image = identified_as_jpeg(temp_output_path)
 
         if not valid_image:
-            logger.debug('JPEG didn\'t pass test, attempting bitmap conversion')
+            logger.debug(
+                'JPEG didn\'t pass test, attempting bitmap conversion')
             jpeg_path = tempfile.mktemp()
             bitmap_to_jpeg(temp_output_path, jpeg_path)
 
@@ -296,7 +312,8 @@ def generate_jpeg(path):
     shutil.rmtree(temp_dir)
 
     if valid_image:
-        logger.debug(f'Returning info about JPEG which is temporarily located here: {final_path}')
+        logger.debug(
+            f'Returning info about JPEG which is temporarily located here: {final_path}')
         return (final_path, RAW_PROCESS_VERSION, process_params, external_version)
 
     logger.error('Couldn\'t make JPEG from raw file')

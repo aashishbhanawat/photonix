@@ -2,19 +2,19 @@ import os
 import sys
 from pathlib import Path
 
-from django.utils import timezone
 import numpy as np
+import tensorflow as tf
+from django.utils import timezone
 from PIL import Image
 from redis_lock import Lock
-import tensorflow as tf
 
-from photonix.classifiers.object.utils import label_map_util
 from photonix.classifiers.base_model import BaseModel
-from photonix.photos.utils.redis import redis_connection
+from photonix.classifiers.object.utils import label_map_util
+from photonix.photos.utils import redis
 from photonix.photos.utils.metadata import PhotoMetadata
 
-
-GRAPH_FILE = os.path.join('object', 'ssd_mobilenet_v2_oid_v4_2018_12_12_frozen_inference_graph.pb')
+GRAPH_FILE = os.path.join(
+    'object', 'ssd_mobilenet_v2_oid_v4_2018_12_12_frozen_inference_graph.pb')
 LABEL_FILE = os.path.join('object', 'oid_v4_label_map.pbtxt')
 
 
@@ -34,7 +34,7 @@ class ObjectModel(BaseModel):
             self.labels = self.load_labels(label_file)
 
     def load_graph(self, graph_file):
-        with Lock(redis_connection, 'classifier_{}_load_graph'.format(self.name)):
+        with Lock(redis.redis_connection, 'classifier_{}_load_graph'.format(self.name)):
             if self.graph_cache_key in self.graph_cache:
                 return self.graph_cache[self.graph_cache_key]
 
@@ -53,7 +53,8 @@ class ObjectModel(BaseModel):
 
     def load_labels(self, label_file):
         label_map = label_map_util.load_labelmap(label_file)
-        categories = label_map_util.convert_label_map_to_categories(label_map, max_num_classes=1000, use_display_name=True)
+        categories = label_map_util.convert_label_map_to_categories(
+            label_map, max_num_classes=1000, use_display_name=True)
         return label_map_util.create_category_index(categories)
 
     def load_image_into_numpy_array(self, image):
@@ -65,7 +66,8 @@ class ObjectModel(BaseModel):
             with tf.compat.v1.Session() as sess:
                 # Get handles to input and output tensors
                 ops = tf.compat.v1.get_default_graph().get_operations()
-                all_tensor_names = {output.name for op in ops for output in op.outputs}
+                all_tensor_names = {
+                    output.name for op in ops for output in op.outputs}
                 tensor_dict = {}
                 for key in [
                     'num_detections', 'detection_boxes', 'detection_scores',
@@ -73,21 +75,28 @@ class ObjectModel(BaseModel):
                 ]:
                     tensor_name = key + ':0'
                     if tensor_name in all_tensor_names:
-                        tensor_dict[key] = tf.compat.v1.get_default_graph().get_tensor_by_name(tensor_name)
+                        tensor_dict[key] = tf.compat.v1.get_default_graph(
+                        ).get_tensor_by_name(tensor_name)
                 if 'detection_masks' in tensor_dict:
                     # The following processing is only for single image
-                    detection_boxes = tf.squeeze(tensor_dict['detection_boxes'], [0])
+                    detection_boxes = tf.squeeze(
+                        tensor_dict['detection_boxes'], [0])
                     # Reframe is required to translate mask from box coordinates to image coordinates and fit the image size.
-                    real_num_detection = tf.cast(tensor_dict['num_detections'][0], tf.int32)
-                    detection_boxes = tf.slice(detection_boxes, [0, 0], [real_num_detection, -1])
+                    real_num_detection = tf.cast(
+                        tensor_dict['num_detections'][0], tf.int32)
+                    detection_boxes = tf.slice(detection_boxes, [0, 0], [
+                                               real_num_detection, -1])
                 image_tensor = tf.compat.v1.get_default_graph().get_tensor_by_name('image_tensor:0')
 
                 # Run inference
-                output_dict = sess.run(tensor_dict, feed_dict={image_tensor: np.expand_dims(image, 0)})
+                output_dict = sess.run(tensor_dict, feed_dict={
+                                       image_tensor: np.expand_dims(image, 0)})
 
                 # all outputs are float32 numpy arrays, so convert types as appropriate
-                output_dict['num_detections'] = int(output_dict['num_detections'][0])
-                output_dict['detection_classes'] = output_dict['detection_classes'][0].astype(np.uint16)
+                output_dict['num_detections'] = int(
+                    output_dict['num_detections'][0])
+                output_dict['detection_classes'] = output_dict['detection_classes'][0].astype(
+                    np.uint16)
                 output_dict['detection_boxes'] = output_dict['detection_boxes'][0]
                 output_dict['detection_scores'] = output_dict['detection_scores'][0]
         return output_dict
@@ -140,7 +149,8 @@ class ObjectModel(BaseModel):
 def run_on_photo(photo_id):
     model = ObjectModel()
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-    from photonix.classifiers.runners import results_for_model_on_photo, get_or_create_tag
+    from photonix.classifiers.runners import (get_or_create_tag,
+                                              results_for_model_on_photo)
     photo, results = results_for_model_on_photo(model, photo_id)
 
     if photo:
@@ -148,8 +158,10 @@ def run_on_photo(photo_id):
         photo.clear_tags(source='C', type='O')
         for result in results:
             if result['label'] != 'Human face':  # We have a specialised face detector
-                tag = get_or_create_tag(library=photo.library, name=result['label'], type='O', source='C')
-                PhotoTag(photo=photo, tag=tag, source='C', confidence=result['score'], significance=result['significance'], position_x=result['x'], position_y=result['y'], size_x=result['width'], size_y=result['height']).save()
+                tag = get_or_create_tag(
+                    library=photo.library, name=result['label'], type='O', source='C')
+                PhotoTag(photo=photo, tag=tag, source='C', confidence=result['score'], significance=result['significance'],
+                         position_x=result['x'], position_y=result['y'], size_x=result['width'], size_y=result['height']).save()
         photo.classifier_object_completed_at = timezone.now()
         photo.classifier_object_version = getattr(model, 'version', 0)
         photo.save()
@@ -166,4 +178,5 @@ if __name__ == '__main__':
     results = run_on_photo(sys.argv[1])
 
     for result in results:
-        print('{} (score: {:0.5f}, significance: {:0.5f}, x: {:0.5f}, y: {:0.5f}, width: {:0.5f}, height: {:0.5f})'.format(result['label'], result['score'], result['significance'], result['x'], result['y'], result['width'], result['height']))
+        print('{} (score: {:0.5f}, significance: {:0.5f}, x: {:0.5f}, y: {:0.5f}, width: {:0.5f}, height: {:0.5f})'.format(
+            result['label'], result['score'], result['significance'], result['x'], result['y'], result['width'], result['height']))

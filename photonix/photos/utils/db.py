@@ -1,17 +1,17 @@
-from datetime import datetime
-from decimal import Decimal
 import imghdr
 import mimetypes
-import os, time
+import os
 import re
 import subprocess
+import time
+from datetime import datetime, timezone
+from decimal import Decimal
 
-from django.utils.timezone import utc
-
-from photonix.photos.models import Camera, Lens, Photo, PhotoFile, Task, Library, Tag, PhotoTag
-from photonix.photos.utils.metadata import PhotoMetadata, parse_datetime, parse_gps_location, get_mimetype
+from photonix.photos.models import (Camera, Lens, Library, Photo, PhotoFile,
+                                    PhotoTag, Tag, Task)
+from photonix.photos.utils.metadata import (PhotoMetadata, get_mimetype,
+                                            parse_datetime, parse_gps_location)
 from photonix.web.utils import logger
-
 
 MIMETYPE_WHITELIST = [
     # This list is in addition to the filetypes detected by imghdr and 'dcraw -i'
@@ -42,36 +42,41 @@ def record_photo(path, library, inotify_event_type=None):
     except PhotoFile.DoesNotExist:
         photo_file = PhotoFile()
 
-    if inotify_event_type in ['DELETE', 'MOVED_FROM']: 
+    if inotify_event_type in ['DELETE', 'MOVED_FROM']:
         if PhotoFile.objects.filter(path=path).exists():
             return delete_photo_record(photo_file)
         else:
             return True
 
-    file_modified_at = datetime.fromtimestamp(os.stat(path).st_mtime, tz=utc)
+    file_modified_at = datetime.fromtimestamp(
+        os.stat(path).st_mtime, tz=timezone.utc)
 
     if photo_file and photo_file.file_modified_at == file_modified_at:
         return True
 
     metadata = PhotoMetadata(path)
     date_taken = None
-    possible_date_keys = ['Create Date', 'Date/Time Original', 'Date Time Original', 'Date/Time', 'Date Time', 'GPS Date/Time', 'File Modification Date/Time']
+    possible_date_keys = ['Create Date', 'Date/Time Original', 'Date Time Original',
+                          'Date/Time', 'Date Time', 'GPS Date/Time', 'File Modification Date/Time']
     for date_key in possible_date_keys:
         date_taken = parse_datetime(metadata.get(date_key))
         if date_taken:
             break
     # If EXIF data not found.
-    date_taken = date_taken or datetime.strptime(time.ctime(os.path.getctime(path)), "%a %b %d %H:%M:%S %Y")
+    date_taken = date_taken or datetime.strptime(
+        time.ctime(os.path.getctime(path)), "%a %b %d %H:%M:%S %Y")
 
     camera = None
     camera_make = metadata.get('Make', '')[:Camera.make.field.max_length]
-    camera_model = metadata.get('Camera Model Name') or metadata.get('Model', '')
+    camera_model = metadata.get(
+        'Camera Model Name') or metadata.get('Model', '')
     if camera_model:
         camera_model = camera_model.replace(camera_make, '').strip()
     camera_model = camera_model[:Camera.model.field.max_length]
     if camera_make and camera_model:
         try:
-            camera = Camera.objects.get(library_id=library_id, make=camera_make, model=camera_model)
+            camera = Camera.objects.get(
+                library_id=library_id, make=camera_make, model=camera_model)
             if date_taken < camera.earliest_photo:
                 camera.earliest_photo = date_taken
                 camera.save()
@@ -142,20 +147,28 @@ def record_photo(path, library, inotify_event_type=None):
         photo = Photo(
             library_id=library_id,
             taken_at=date_taken,
-            taken_by=metadata.get('Artist', '')[:Photo.taken_by.field.max_length] or None,
+            taken_by=metadata.get('Artist', '')[
+                :Photo.taken_by.field.max_length] or None,
             aperture=aperture,
-            exposure=metadata.get('Exposure Time', '')[:Photo.exposure.field.max_length] or None,
+            exposure=metadata.get('Exposure Time', '')[
+                :Photo.exposure.field.max_length] or None,
             iso_speed=iso_speed,
-            focal_length=metadata.get('Focal Length') and metadata.get('Focal Length').split(' ', 1)[0] or None,
-            flash=metadata.get('Flash') and 'on' in metadata.get('Flash').lower() or False,
-            metering_mode=metadata.get('Metering Mode', '')[:Photo.metering_mode.field.max_length] or None,
-            drive_mode=metadata.get('Drive Mode', '')[:Photo.drive_mode.field.max_length] or None,
-            shooting_mode=metadata.get('Shooting Mode', '')[:Photo.shooting_mode.field.max_length] or None,
+            focal_length=metadata.get('Focal Length') and metadata.get(
+                'Focal Length').split(' ', 1)[0] or None,
+            flash=metadata.get('Flash') and 'on' in metadata.get(
+                'Flash').lower() or False,
+            metering_mode=metadata.get('Metering Mode', '')[
+                :Photo.metering_mode.field.max_length] or None,
+            drive_mode=metadata.get('Drive Mode', '')[
+                :Photo.drive_mode.field.max_length] or None,
+            shooting_mode=metadata.get('Shooting Mode', '')[
+                :Photo.shooting_mode.field.max_length] or None,
             camera=camera,
             lens=lens,
             latitude=latitude,
             longitude=longitude,
-            altitude=metadata.get('GPS Altitude') and metadata.get('GPS Altitude').split(' ')[0],
+            altitude=metadata.get('GPS Altitude') and metadata.get(
+                'GPS Altitude').split(' ')[0],
             star_rating=metadata.get('Rating')
         )
         photo.save()
@@ -163,12 +176,13 @@ def record_photo(path, library, inotify_event_type=None):
         for subject in metadata.get('Subject', '').split(','):
             subject = subject.strip()
             if subject:
-                tag, _ = Tag.objects.get_or_create(library_id=library_id, name=subject, type="G")
+                tag, _ = Tag.objects.get_or_create(
+                    library_id=library_id, name=subject, type="G")
                 PhotoTag.objects.create(
                     photo=photo,
                     tag=tag,
                     confidence=1.0
-            )
+                )
     else:
         for photo_file in photo.files.all():
             if not os.path.exists(photo_file.path):
