@@ -81,8 +81,9 @@ class Command(BaseCommand):
                     await asyncio.sleep(4)
 
             async def handle_inotify_events():
+                moved_from_attr_dict = {}
                 async for event in inotify:
-                    if 'moved_from_attr_dict' in locals() and moved_from_attr_dict:
+                    if moved_from_attr_dict:
                         for potential_library_path, (potential_library_id, _) in watching_libraries.items():
                             if str(event.path).startswith(potential_library_path):
                                 library_id = potential_library_id

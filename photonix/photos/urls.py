@@ -1,5 +1,9 @@
-from django.views.decorators.csrf import =, [, csrf_exempturlpatterns
+from django.urls import path
+from django.views.decorators.csrf import csrf_exempt
+from graphene_django.views import GraphQLView
+from .views import upload
 
-                                              ...
-                                              path('graphql/', csrf_exempt(GraphQLView.as_view(graphiql=True))),
-                                              ]
+urlpatterns = [
+    path('graphql/', csrf_exempt(GraphQLView.as_view(graphiql=True))),
+    path('upload/', csrf_exempt(upload), name='upload'),
+]
