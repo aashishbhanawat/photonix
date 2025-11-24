@@ -213,7 +213,6 @@ def preprocess_face(img, target_size=(224, 224), grayscale = False, enforce_dete
 def find_input_shape(model):
 	# face recognition models have different size of inputs
 	# my environment returns (None, 224, 224, 3) but some people mentioned that they got [(None, 224, 224, 3)]. I think this is because of version issue.
-
 	input_shape = model.layers[0].input_shape
 
 	if type(input_shape) == list:

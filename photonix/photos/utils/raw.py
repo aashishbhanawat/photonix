@@ -65,7 +65,7 @@ def process_raw_task(photo_file_id, task):
         return
 
     if not os.path.isdir(settings.PHOTO_RAW_PROCESSED_DIR):
-        os.mkdir(settings.PHOTO_RAW_PROCESSED_DIR)
+        os.makedirs(settings.PHOTO_RAW_PROCESSED_DIR)
     destination_path = Path(settings.PHOTO_RAW_PROCESSED_DIR) / str('{}.jpg'.format(photo_file.id))
     shutil.move(output_path, str(destination_path))
 

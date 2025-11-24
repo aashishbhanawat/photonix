@@ -3,6 +3,7 @@ import datetime
 import os
 from pathlib import Path
 import unittest
+from unittest import mock
 
 import pytest
 
@@ -18,21 +19,6 @@ class TestGraphQL(unittest.TestCase):
 
     _library_user = None
     _library = None
-
-    def setUp(self):
-        """Make user login before each test case run."""
-        super().setUp()
-        login_mutation = """
-            mutation TokenAuth($username: String!, $password: String!) {
-                tokenAuth(username: $username, password: $password) {
-                  token
-                  refreshToken
-                }
-              }
-        """
-        self.api_client.post_graphql(login_mutation, {
-            'username': self.defaults['user'].username,
-            'password': self.defaults['password']})
 
     @pytest.fixture(autouse=True)
     def defaults_values(self, db, api_client):
@@ -60,6 +46,17 @@ class TestGraphQL(unittest.TestCase):
             'tree_photo': tree_photo,
             'password': 'demo123456',
         }
+        login_mutation = """
+            mutation TokenAuth($username: String!, $password: String!) {
+                tokenAuth(username: $username, password: $password) {
+                  token
+                  refreshToken
+                }
+              }
+        """
+        self.api_client.post_graphql(login_mutation, {
+            'username': self.defaults['user'].username,
+            'password': self.defaults['password']})
 
     def test_fix347(self):
         # Test fix 347 - Photos with same date are not imported
@@ -385,7 +382,7 @@ class TestGraphQL(unittest.TestCase):
         data = get_graphql_content(response)
         assert response.status_code == 200
         self.assertEqual(tuple(tuple(tuple(data.values())[0].values())[0].values())[0].get('starRating'),4)
-        self.assertEqual(tuple(tuple(tuple(data.values())[0].values())[0].values())[0].get('aperture'), self.defaults['snow_photo'].aperture)
+        self.assertEqual(tuple(tuple(tuple(data.values())[0].values())[0].values())[0].get('aperture'), str(self.defaults['snow_photo'].aperture))
 
     def test_create_generic_tag_mutation(self):
         """Test create_generic_tag mutation response."""
@@ -544,7 +541,7 @@ class TestGraphQL(unittest.TestCase):
         assert response.status_code == 200
         data = get_graphql_content(response)
         self.assertEqual(data['data']['photo']['id'], str(self.defaults['tree_photo'].id))
-        self.assertEqual(data['data']['photo']['aperture'], self.defaults['tree_photo'].aperture)
+        self.assertEqual(data['data']['photo']['aperture'], str(self.defaults['tree_photo'].aperture))
         self.assertEqual(data['data']['photo']['exposure'], self.defaults['tree_photo'].exposure)
         self.assertEqual(data['data']['photo']['isoSpeed'], self.defaults['tree_photo'].iso_speed)
         self.assertEqual(str(data['data']['photo']['focalLength']), self.defaults['tree_photo'].focal_length)
@@ -682,6 +679,10 @@ class TestGraphQL(unittest.TestCase):
         # object_photo_tag, _ = PhotoTag.objects.get_or_create(photo=self.defaults['snow_photo'], tag=tree_tag, confidence=1.0)
         white_color_tag, _ = Tag.objects.get_or_create(library=self.defaults['library'], name='White', type='C')
         white_color_photo_tag, _ = PhotoTag.objects.get_or_create(photo=self.defaults['snow_photo'], tag=white_color_tag, confidence=1.0)
+        from photonix.photos.models import Camera
+        camera, _ = Camera.objects.get_or_create(make='Xiaomi', model='Test Camera', library=self.defaults['library'])
+        self.defaults['snow_photo'].camera = camera
+        self.defaults['snow_photo'].save()
         multi_filter = 'aperture:1.3-10'
         query = """
             query AllFilters($libraryId: UUID, $multiFilter: String) {
@@ -742,13 +743,15 @@ class TestGraphQL(unittest.TestCase):
         self.assertEqual(data['data']['allColorTags'][0]['name'], white_color_tag.name)
         self.assertEqual(data['data']['allColorTags'][1]['name'], color_type_tag.name)
         self.assertEqual(data['data']['allApertures'][0], self.defaults['tree_photo'].aperture)
-        self.assertEqual(data['data']['allCameras'][0]['id'], str(self.defaults['snow_photo'].camera.id))
+        all_cameras = sorted(data['data']['allCameras'], key=lambda x: x['id'])
+        self.assertEqual(all_cameras[0]['make'], self.defaults['snow_photo'].camera.make)
+        self.assertEqual(all_cameras[0]['model'], self.defaults['snow_photo'].camera.model)
         self.assertEqual(str(data['data']['allFocalLengths'][0]), self.defaults['snow_photo'].focal_length)
-
 
 @pytest.mark.django_db
 class TestGraphQLOnboarding(unittest.TestCase):
     """Check onboarding(user sign up) process queries."""
+
 
     @pytest.fixture(autouse=True)
     def use_fixture(self, api_client):

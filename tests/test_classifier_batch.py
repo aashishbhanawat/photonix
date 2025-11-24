@@ -14,11 +14,16 @@ from photonix.photos.utils.classification import ThreadedQueueProcessor
 from .factories import PhotoFactory, PhotoFileFactory, LibraryFactory, TaskFactory
 
 
-model = StyleModel()
+from mock import patch
 
 
 @pytest.mark.django_db
-def test_classifier_batch():
+@patch('photonix.classifiers.style.model.StyleModel.predict')
+@patch('photonix.classifiers.style.model.StyleModel.ensure_downloaded')
+def test_classifier_batch(mock_ensure_downloaded, mock_predict):
+    mock_ensure_downloaded.return_value = True
+    mock_predict.return_value = [('serene', 0.99)]
+    model = StyleModel()
     photo = PhotoFactory()
     PhotoFileFactory(photo=photo)
 

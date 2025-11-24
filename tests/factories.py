@@ -29,7 +29,7 @@ class LibraryFactory(factory.django.DjangoModelFactory):
     classification_style_enabled = True
     classification_object_enabled = True
     classification_face_enabled = True
-    setup_stage_completed = True
+    setup_stage_completed = 'Th'
 
 
 class LibraryUserFactory(factory.django.DjangoModelFactory):
@@ -39,6 +39,17 @@ class LibraryUserFactory(factory.django.DjangoModelFactory):
     library = factory.SubFactory(LibraryFactory)
     user = factory.SubFactory(UserFactory)
     owner = True
+
+
+class CameraFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = 'photos.Camera'
+
+    make = factory.Sequence(lambda n: f'Test Make {n}')
+    model = factory.Sequence(lambda n: f'Test Model {n}')
+    earliest_photo = factory.LazyAttribute(lambda o: timezone.now())
+    latest_photo = factory.LazyAttribute(lambda o: timezone.now())
+    library = factory.SubFactory(LibraryFactory)
 
 
 class PhotoFactory(factory.django.DjangoModelFactory):
