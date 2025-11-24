@@ -1,13 +1,14 @@
 import os
 
-from django.contrib.auth import get_user_model, authenticate, update_session_auth_hash
 import graphene
+import graphql_jwt
+from django.contrib.auth import (authenticate, get_user_model,
+                                 update_session_auth_hash)
 from graphene_django.types import DjangoObjectType
 from graphql import GraphQLError
 from graphql_jwt.shortcuts import create_refresh_token, get_token
-import graphql_jwt
-from photonix.photos.models import Library, LibraryPath, LibraryUser
 
+from photonix.photos.models import Library, LibraryPath, LibraryUser
 
 User = get_user_model()
 
@@ -75,7 +76,8 @@ class Query(graphene.ObjectType):
     def resolve_environment(self, info):
         user = User.objects.first()
         demo = os.environ.get('DEMO', False)
-        sample_data = os.environ.get('DEMO', False) or os.environ.get('SAMPLE_DATA', False)
+        sample_data = os.environ.get(
+            'DEMO', False) or os.environ.get('SAMPLE_DATA', False)
 
         if user and user.has_set_personal_info and \
             user.has_created_library and user.has_configured_importing and \

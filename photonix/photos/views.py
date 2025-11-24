@@ -1,11 +1,13 @@
+from photonix.photos.models import PhotoFile
 from pathlib import Path
 
 from django.conf import settings
-from django.http import HttpResponse, HttpResponseNotFound, JsonResponse, HttpResponseRedirect
+from django.http import (HttpResponse, HttpResponseNotFound,
+                         HttpResponseRedirect, JsonResponse)
 from django.shortcuts import get_object_or_404
 
-from photonix.photos.utils.thumbnails import get_thumbnail
 from photonix.photos.models import Library
+from photonix.photos.utils.thumbnails import get_thumbnail
 
 
 def thumbnailer(request, type, id, width, height, crop, quality):
@@ -31,7 +33,8 @@ def thumbnailer(request, type, id, width, height, crop, quality):
     elif type == 'photofile':
         photo_file_id = id
 
-    path = get_thumbnail(photo_file=photo_file_id, photo=photo_id, width=width, height=height, crop=crop, quality=quality, return_type='url', force_accurate=force_accurate)
+    path = get_thumbnail(photo_file=photo_file_id, photo=photo_id, width=width, height=height,
+                         crop=crop, quality=quality, return_type='url', force_accurate=force_accurate)
     return HttpResponseRedirect(path)
 
 
@@ -50,8 +53,6 @@ def upload(request):
     return JsonResponse({'ok': True})
 
 
-from photonix.photos.models import PhotoFile
-
 def dummy_thumbnail_response(request, path):
     # Only used during testing to return thumbnail images. Everywhere else, Nginx handles these requests.
     filepath = str(Path(settings.THUMBNAIL_ROOT) / path)
@@ -65,6 +66,7 @@ def dummy_thumbnail_response(request, path):
         width, height, crop, quality = parts[-2].split('_')
         width, height = [int(x) for x in width.split('x')]
         quality = int(quality[1:])
-        get_thumbnail(photo_file=photo_file_id, width=width, height=height, crop=crop, quality=quality, return_type='path')
+        get_thumbnail(photo_file=photo_file_id, width=width,
+                      height=height, crop=crop, quality=quality, return_type='path')
         with open(filepath, 'rb') as f:
             return HttpResponse(f.read(), content_type='image/jpeg')

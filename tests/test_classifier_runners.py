@@ -5,7 +5,6 @@ import pytest
 
 from .factories import LibraryFactory
 
-
 # pytestmark = pytest.mark.django_db
 
 
@@ -43,7 +42,8 @@ def test_color_via_runner(photo_fixture_snow):
     assert photo_fixture_snow.photo_tags.count() == 13
     assert photo_fixture_snow.photo_tags.all()[0].tag.name == 'Red'
     assert photo_fixture_snow.photo_tags.all()[0].tag.type == 'C'
-    assert '{0:.3f}'.format(photo_fixture_snow.photo_tags.all()[0].significance) == '0.163'
+    assert '{0:.3f}'.format(photo_fixture_snow.photo_tags.all()[
+                            0].significance) == '0.163'
 
 
 def test_location_via_runner(photo_fixture_tree):
@@ -82,7 +82,8 @@ def test_location_via_runner(photo_fixture_tree):
 @mock.patch('photonix.classifiers.object.model.ObjectModel.predict')
 def test_object_via_runner(mock_predict, photo_fixture_snow):
     from photonix.classifiers.object.model import run_on_photo
-    mock_predict.return_value = [{'label': 'Tree', 'score': 0.602, 'significance': 0.134, 'x': 0.787, 'y': 0.374, 'width': 0.340, 'height': 0.655}, {'label': 'Tree', 'score': 0.525, 'significance': 0.016, 'x': 0.1, 'y': 0.2, 'width': 0.3, 'height': 0.4}, {'label': 'Tree', 'score': 0.453, 'significance': 0.025, 'x': 0.5, 'y': 0.6, 'width': 0.7, 'height': 0.8}]
+    mock_predict.return_value = [{'label': 'Tree', 'score': 0.602, 'significance': 0.134, 'x': 0.787, 'y': 0.374, 'width': 0.340, 'height': 0.655}, {'label': 'Tree', 'score': 0.525,
+                                                                                                                                                     'significance': 0.016, 'x': 0.1, 'y': 0.2, 'width': 0.3, 'height': 0.4}, {'label': 'Tree', 'score': 0.453, 'significance': 0.025, 'x': 0.5, 'y': 0.6, 'width': 0.7, 'height': 0.8}]
 
     # Path on it's own returns a None Photo object along with the result
     snow = str(Path(__file__).parent / 'photos' / 'snow.jpg')
@@ -99,7 +100,8 @@ def test_object_via_runner(mock_predict, photo_fixture_snow):
     assert photo_fixture_snow.photo_tags.count() == 3
     assert photo_fixture_snow.photo_tags.all()[0].tag.name == 'Tree'
     assert photo_fixture_snow.photo_tags.all()[0].tag.type == 'O'
-    assert '{0:.3f}'.format(photo_fixture_snow.photo_tags.all()[0].significance) == '0.134'
+    assert '{0:.3f}'.format(photo_fixture_snow.photo_tags.all()[
+                            0].significance) == '0.134'
 
 
 @mock.patch('photonix.classifiers.style.model.StyleModel.predict')
@@ -124,4 +126,5 @@ def test_style_via_runner(mock_predict, photo_fixture_snow):
     assert photo_fixture_snow.photo_tags.count() == 1
     assert photo_fixture_snow.photo_tags.all()[0].tag.name == 'serene'
     assert photo_fixture_snow.photo_tags.all()[0].tag.type == 'S'
-    assert '{0:.3f}'.format(photo_fixture_snow.photo_tags.all()[0].significance) == '0.962'
+    assert '{0:.3f}'.format(photo_fixture_snow.photo_tags.all()[
+                            0].significance) == '0.962'

@@ -1,18 +1,17 @@
 import hashlib
 import json
+import logging
 import os
 import random
 import shutil
 import subprocess
 import tempfile
 from pathlib import Path
-import logging
 
 import requests
 from redis_lock import Lock
 
-from photonix.photos.utils.redis import redis_connection
-
+from photonix.photos.utils import redis
 
 graph_cache = {}
 
@@ -31,7 +30,8 @@ class BaseModel:
                 from django.conf import settings
                 self.model_dir = settings.MODEL_DIR
             except:
-                self.model_dir = str(Path(__file__).parent.parent.parent / 'data' / 'models')
+                self.model_dir = str(
+                    Path(__file__).parent.parent.parent / 'data' / 'models')
 
     @property
     def graph_cache_key(self):
@@ -52,7 +52,7 @@ class BaseModel:
         if not lock_name:
             lock_name = 'classifier_{}_download'.format(self.name)
 
-        with Lock(redis_connection, lock_name):
+        with Lock(redis.redis_connection, lock_name):
             try:
                 with open(version_file) as f:
                     if f.read().strip() == str(self.version):
@@ -64,7 +64,8 @@ class BaseModel:
             error = False
 
             for file_data in model_info['files']:
-                final_path = os.path.join(self.model_dir, self.name, file_data['filename'])
+                final_path = os.path.join(
+                    self.model_dir, self.name, file_data['filename'])
                 if not os.path.exists(final_path):
                     locations = file_data['locations']
                     index = random.choice(range(len(locations)))
@@ -80,7 +81,8 @@ class BaseModel:
 
                     # Download file to temporary location
                     with tempfile.NamedTemporaryFile(mode='w+b', delete=False) as f:
-                        for chunk in request.iter_content(chunk_size=1024 * 1024):  # 1MB chunks
+                        # 1MB chunks
+                        for chunk in request.iter_content(chunk_size=1024 * 1024):
                             if chunk:  # filter out keep-alive new chunks
                                 f.write(chunk)
                                 hash_sha256.update(chunk)
