@@ -13,6 +13,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='user',
             name='has_config_persional_info',
-            field=models.BooleanField(default=False, help_text='true if user has registered persional info?'),
+            field=models.BooleanField(
+                default=False, help_text='true if user has registered persional info?'),
         ),
     ]

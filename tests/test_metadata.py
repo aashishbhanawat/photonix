@@ -1,7 +1,9 @@
+from unittest import mock
 import os
 from pathlib import Path
 
-from photonix.photos.utils.metadata import PhotoMetadata, parse_gps_location, get_datetime
+from photonix.photos.utils.metadata import (PhotoMetadata, get_datetime,
+                                            parse_gps_location)
 
 
 def test_metadata():
@@ -28,9 +30,6 @@ def test_location():
     assert longitude == -21.933911666666667
 
 
-from unittest import mock
-
-
 def test_datetime():
     # Data from exif metadata
     photo_path = str(Path(__file__).parent / 'photos' / 'snow.jpg')
@@ -55,8 +54,10 @@ def test_datetime():
 
     # Some of the date digits are the letter X so fall back to file creation date
     with mock.patch('os.stat') as mock_stat:
-        mock_stat_result = os.stat_result((33188, 0, 0, 0, 0, 0, 0, 0, 0, 1630579429))
+        mock_stat_result = os.stat_result(
+            (33188, 0, 0, 0, 0, 0, 0, 0, 0, 1630579429))
         mock_stat.return_value = mock_stat_result
-        photo_path = str(Path(__file__).parent / 'photos' / 'unreadable_date.jpg')
+        photo_path = str(Path(__file__).parent /
+                         'photos' / 'unreadable_date.jpg')
         parsed_datetime = get_datetime(photo_path)
         assert parsed_datetime.isoformat() == '2021-09-02T10:43:49+00:00'

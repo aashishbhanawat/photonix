@@ -8,11 +8,13 @@ def get_or_create_tag(library, name, type, source, parent=None, ordering=None):
     # get_or_create is not atomic so an instance could get created by another thread inbetween.
     # This causes an IntegrityError due to the unique_together constraint.
     from django.db import IntegrityError
+
     from photonix.photos.models import Tag
 
     while True:
         try:
-            tag, _ = Tag.objects.get_or_create(library=library, name=name, type=type, source=source, parent=parent, ordering=ordering)
+            tag, _ = Tag.objects.get_or_create(
+                library=library, name=name, type=type, source=source, parent=parent, ordering=ordering)
             break
         except IntegrityError:
             sleep(1)
@@ -39,7 +41,8 @@ def get_photo_by_any_type(photo_id, model=None):
     if not photo:
         # Handle running scripts from command line and Photo IDs
         if not os.environ.get('DJANGO_SETTINGS_MODULE'):
-            os.environ.setdefault("DJANGO_SETTINGS_MODULE", "photonix.web.settings")
+            os.environ.setdefault("DJANGO_SETTINGS_MODULE",
+                                  "photonix.web.settings")
             import django
             django.setup()
 

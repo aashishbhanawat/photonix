@@ -1,8 +1,8 @@
 import json
 
-
 # These util functions come from the Saleor project and are licensed as BSD-3-Clause
 # https://github.com/mirumee/saleor/blob/master/tests/api/utils.py
+
 
 def _get_graphql_content_from_response(response):
     return json.loads(response.content.decode("utf8"))

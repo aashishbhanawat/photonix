@@ -13,7 +13,8 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='library',
             name='classification_face_enabled',
-            field=models.BooleanField(default=False, help_text='Run face detection on photos?'),
+            field=models.BooleanField(
+                default=False, help_text='Run face detection on photos?'),
         ),
         migrations.AddField(
             model_name='phototag',
@@ -28,7 +29,8 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='phototag',
             name='retrained_model_version',
-            field=models.PositiveBigIntegerField(default=0, help_text='If classifier has models that are re-trained locally (e.g. Face) then we want to store this too (YYYYMMDDHHMMSS)'),
+            field=models.PositiveBigIntegerField(
+                default=0, help_text='If classifier has models that are re-trained locally (e.g. Face) then we want to store this too (YYYYMMDDHHMMSS)'),
         ),
         migrations.AlterField(
             model_name='photo',
@@ -38,6 +40,7 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='phototag',
             name='model_version',
-            field=models.PositiveIntegerField(default=0, help_text='Version number of classifier model if source is Computer (YYYYMMDD)'),
+            field=models.PositiveIntegerField(
+                default=0, help_text='Version number of classifier model if source is Computer (YYYYMMDD)'),
         ),
     ]

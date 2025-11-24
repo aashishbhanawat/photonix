@@ -1,11 +1,10 @@
-from datetime import datetime
-from dateutil.parser import parse as parse_date
 import mimetypes
 import os
 import re
-from subprocess import Popen, PIPE
+from datetime import datetime, timezone
+from subprocess import PIPE, Popen
 
-from django.utils.timezone import utc
+from dateutil.parser import parse as parse_date
 
 
 class PhotoMetadata(object):
@@ -13,7 +12,8 @@ class PhotoMetadata(object):
         self.data = {}
         try:
             # exiftool produces data such as MIME Type for non-photos too
-            result = Popen(['exiftool', path], stdout=PIPE, stdin=PIPE, stderr=PIPE).communicate()[0].decode('utf-8', 'ignore')
+            result = Popen(['exiftool', path], stdout=PIPE, stdin=PIPE,
+                           stderr=PIPE).communicate()[0].decode('utf-8', 'ignore')
         except UnicodeDecodeError:
             result = ''
         for line in str(result).split('\n'):
@@ -41,12 +41,12 @@ def parse_datetime(date_str):
     if '.' in date_str:
         date_str = date_str.split('.', 1)[0]
     try:
-        return datetime.strptime(date_str, '%Y:%m:%d %H:%M:%S').replace(tzinfo=utc)
+        return datetime.strptime(date_str, '%Y:%m:%d %H:%M:%S').replace(tzinfo=timezone.utc)
     except ValueError:
         try:
             parsed_date = parse_date(date_str)
             if not parsed_date.tzinfo:
-                parsed_date = parsed_date.replace(tzinfo=utc)
+                parsed_date = parsed_date.replace(tzinfo=timezone.utc)
             return parsed_date
         except ValueError:
             return None
@@ -57,11 +57,13 @@ def parse_gps_location(gps_str):
     regex = r'''(\d{1,3}) deg (\d{1,2})' (\d{1,2}).(\d{2})" ([N,S]), (\d{1,3}) deg (\d{1,2})' (\d{1,2}).(\d{2})" ([E,W])'''
     m = re.search(regex, gps_str)
 
-    latitude = float(m.group(1)) + (float(m.group(2)) / 60) + (float('{}.{}'.format(m.group(3), m.group(4))) / 60 / 100)
+    latitude = float(m.group(1)) + (float(m.group(2)) / 60) + \
+        (float('{}.{}'.format(m.group(3), m.group(4))) / 60 / 100)
     if m.group(5) == 'S':
         latitude *= -1
 
-    longitude = float(m.group(6)) + (float(m.group(7)) / 60) + (float('{}.{}'.format(m.group(8), m.group(9))) / 60 / 100)
+    longitude = float(m.group(6)) + (float(m.group(7)) / 60) + \
+        (float('{}.{}'.format(m.group(8), m.group(9))) / 60 / 100)
     if m.group(10) == 'W':
         longitude *= -1
 
@@ -95,12 +97,13 @@ def get_datetime(path):
     if not matched:
         matched = re.search(r'\D((19|20)[0-9]{2})([0-9]{2})([0-9]{2})\D', fn)
     if matched:
-        date_str = '{}-{}-{}'.format(matched.group(1), matched.group(3), matched.group(4))
+        date_str = '{}-{}-{}'.format(matched.group(1),
+                                     matched.group(3), matched.group(4))
         return datetime.strptime(date_str, '%Y-%m-%d')
 
     # Otherwise get file creation time
     try:
-        return datetime.fromtimestamp(os.stat(path).st_ctime).replace(tzinfo=utc)
+        return datetime.fromtimestamp(os.stat(path).st_ctime).replace(tzinfo=timezone.utc)
     except:
         return None
 

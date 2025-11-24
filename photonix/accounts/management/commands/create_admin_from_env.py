@@ -9,7 +9,6 @@ from photonix.photos.models import Library, LibraryPath, LibraryUser
 from photonix.photos.utils.db import record_photo
 from photonix.photos.utils.fs import determine_destination, download_file
 
-
 User = get_user_model()
 
 
