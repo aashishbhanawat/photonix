@@ -1,16 +1,15 @@
 
 import io
-import os
 import math
+import os
 from pathlib import Path
 
-from PIL import Image, ImageOps, ImageFile
 import numpy as np
-
 from django.conf import settings
+from PIL import Image, ImageFile, ImageOps
+
 from photonix.photos.models import Photo, PhotoFile, Task
 from photonix.photos.utils.metadata import PhotoMetadata
-
 
 THUMBNAILER_VERSION = 20210321
 
@@ -34,7 +33,8 @@ def generate_thumbnails_for_photo(photo, task):
     for thumbnail in settings.THUMBNAIL_SIZES:
         if thumbnail[4]:  # Required from the start
             try:
-                get_thumbnail(photo=photo, width=thumbnail[0], height=thumbnail[1], crop=thumbnail[2], quality=thumbnail[3], force_regenerate=True, force_accurate=thumbnail[5])
+                get_thumbnail(photo=photo, width=thumbnail[0], height=thumbnail[1], crop=thumbnail[2],
+                              quality=thumbnail[3], force_regenerate=True, force_accurate=thumbnail[5])
             except (FileNotFoundError, IndexError):
                 task.failed()
                 return
@@ -51,7 +51,8 @@ def generate_thumbnails_for_photo(photo, task):
 
 
 def get_thumbnail_path(photo_file_id, width=256, height=256, crop='cover', quality=75):
-    directory = Path(f'{settings.THUMBNAIL_ROOT}/photofile/{width}x{height}_{crop}_q{quality}')
+    directory = Path(
+        f'{settings.THUMBNAIL_ROOT}/photofile/{width}x{height}_{crop}_q{quality}')
     directory.mkdir(parents=True, exist_ok=True)
     return directory / f'{photo_file_id}.jpg'
 
@@ -69,7 +70,8 @@ def get_thumbnail(photo_file=None, photo=None, width=256, height=256, crop='cove
         photo_file = PhotoFile.objects.get(id=photo_file)
 
     # If thumbnail image was previously generated and we weren't told to re-generate, return that one
-    output_path = get_thumbnail_path(photo_file.id, width, height, crop, quality)
+    output_path = get_thumbnail_path(
+        photo_file.id, width, height, crop, quality)
     output_url = get_thumbnail_url(photo_file.id, width, height, crop, quality)
 
     if os.path.exists(output_path):
@@ -160,10 +162,13 @@ def srgbResize(im, size, crop, resample):
             crop_height = live_size[0] / output_ratio
 
         # make the crop
-        crop_left = bleed_pixels[0] + (live_size[0] - crop_width) * centering[0]
-        crop_top = bleed_pixels[1] + (live_size[1] - crop_height) * centering[1]
+        crop_left = bleed_pixels[0] + \
+            (live_size[0] - crop_width) * centering[0]
+        crop_top = bleed_pixels[1] + \
+            (live_size[1] - crop_height) * centering[1]
 
-        box = (crop_left, crop_top, crop_left + crop_width, crop_top + crop_height)
+        box = (crop_left, crop_top, crop_left +
+               crop_width, crop_top + crop_height)
 
     else:  # Contain
         # Adapted from Pillow's Image.thumbnail method
@@ -187,7 +192,8 @@ def srgbResize(im, size, crop, resample):
         box = None
         reducing_gap = 2.0
         if reducing_gap is not None:
-            res = im.draft(None, (size[0] * reducing_gap, size[1] * reducing_gap))
+            res = im.draft(
+                None, (size[0] * reducing_gap, size[1] * reducing_gap))
             if res is not None:
                 box = res[1]
 
@@ -202,11 +208,12 @@ def srgbResize(im, size, crop, resample):
     # Resize using PIL
     arrOut = np.zeros((size[1], size[0], arr.shape[2]))
     for i in range(arr.shape[2]):
-        chan = Image.fromarray(arr[:,:,i])
+        chan = Image.fromarray(arr[:, :, i])
         chan = chan.resize(size, resample, box=box, reducing_gap=2.0)
-        arrOut[:,:,i] = np.array(chan).clip(0.0, 1.0)
+        arrOut[:, :, i] = np.array(chan).clip(0.0, 1.0)
     # Convert linear -> sRGB
-    arrOut = np.where(arrOut <= 0.0031308, 12.92*arrOut, 1.055*arrOut**(1.0/2.4) - 0.055)
+    arrOut = np.where(arrOut <= 0.0031308, 12.92*arrOut,
+                      1.055*arrOut**(1.0/2.4) - 0.055)
     # Convert to 8-bit
     arrOut = np.uint8(np.rint(arrOut * 255.0))
     # Convert back to PIL

@@ -1,13 +1,14 @@
 from pathlib import Path
 
-from django.utils import timezone
 import pytest
+from django.utils import timezone
 
-from .factories import LibraryFactory
 from photonix.photos.models import Task
 from photonix.photos.utils.classification import process_classify_images_tasks
 from photonix.photos.utils.raw import ensure_raw_processing_tasks
 from photonix.photos.utils.thumbnails import process_generate_thumbnails_tasks
+
+from .factories import LibraryFactory
 
 # pytestmark = pytest.mark.django_db
 
@@ -22,7 +23,8 @@ def photo_fixture_snow(db):
 
 def test_tasks_created_updated(photo_fixture_snow):
     # Task should have been created for the fixture
-    task = Task.objects.get(type='ensure_raw_processed', status='P', subject_id=photo_fixture_snow.id)
+    task = Task.objects.get(type='ensure_raw_processed',
+                            status='P', subject_id=photo_fixture_snow.id)
     assert (timezone.now() - task.created_at).seconds < 1
     assert (timezone.now() - task.updated_at).seconds < 1
     assert task.started_at == None
@@ -40,13 +42,15 @@ def test_tasks_created_updated(photo_fixture_snow):
 
     # Calling this function should complete the task and queue up a new one for generating thumbnails
     ensure_raw_processing_tasks()
-    task = Task.objects.get(type='ensure_raw_processed', subject_id=photo_fixture_snow.id)
+    task = Task.objects.get(type='ensure_raw_processed',
+                            subject_id=photo_fixture_snow.id)
     assert task.status == 'C'
     assert (timezone.now() - task.started_at).seconds < 1
     assert (timezone.now() - task.finished_at).seconds < 1
 
     # Check next task has been created
-    task = Task.objects.get(type='generate_thumbnails', subject_id=photo_fixture_snow.id)
+    task = Task.objects.get(type='generate_thumbnails',
+                            subject_id=photo_fixture_snow.id)
     assert task.status == 'P'
     assert (timezone.now() - task.created_at).seconds < 1
     assert (timezone.now() - task.updated_at).seconds < 1
@@ -55,13 +59,15 @@ def test_tasks_created_updated(photo_fixture_snow):
 
     # Process tasks to generate thumbnails which should add new task for classification
     process_generate_thumbnails_tasks()
-    task = Task.objects.get(type='generate_thumbnails', subject_id=photo_fixture_snow.id)
+    task = Task.objects.get(type='generate_thumbnails',
+                            subject_id=photo_fixture_snow.id)
     assert task.status == 'C'
     assert (timezone.now() - task.started_at).seconds < 10
     assert (timezone.now() - task.finished_at).seconds < 1
 
     # Chekc next task has been added to classify images
-    task = Task.objects.get(type='classify_images', subject_id=photo_fixture_snow.id)
+    task = Task.objects.get(type='classify_images',
+                            subject_id=photo_fixture_snow.id)
     assert task.status == 'P'
     assert (timezone.now() - task.created_at).seconds < 1
     assert (timezone.now() - task.updated_at).seconds < 1
@@ -72,7 +78,8 @@ def test_tasks_created_updated(photo_fixture_snow):
     assert task.complete_with_children == False
     assert task.status == 'P'
     process_classify_images_tasks()
-    task = Task.objects.get(type='classify_images', subject_id=photo_fixture_snow.id)
+    task = Task.objects.get(type='classify_images',
+                            subject_id=photo_fixture_snow.id)
     assert task.status == 'S'
     assert task.children.count() == 6
     assert task.complete_with_children == True

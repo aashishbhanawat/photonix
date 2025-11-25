@@ -13,16 +13,19 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='user',
             name='has_configured_image_analysis',
-            field=models.BooleanField(default=False, help_text='true if user has configured image analysis?'),
+            field=models.BooleanField(
+                default=False, help_text='true if user has configured image analysis?'),
         ),
         migrations.AddField(
             model_name='user',
             name='has_configured_importing',
-            field=models.BooleanField(default=False, help_text='true if user has configured importing?'),
+            field=models.BooleanField(
+                default=False, help_text='true if user has configured importing?'),
         ),
         migrations.AddField(
             model_name='user',
             name='has_created_library',
-            field=models.BooleanField(default=False, help_text='true if user has created his library?'),
+            field=models.BooleanField(
+                default=False, help_text='true if user has created his library?'),
         ),
     ]
