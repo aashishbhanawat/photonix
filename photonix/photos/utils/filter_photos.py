@@ -1,7 +1,9 @@
-from django.db.models import Case, When, Value, IntegerField
-from photonix.photos.models import Tag
 import datetime
 import re
+
+from django.db.models import Case, IntegerField, Value, When
+
+from photonix.photos.models import Tag
 
 month_dict = {
     "january": 1,
@@ -29,13 +31,13 @@ def get_date_elements_from_filters(filter_string):
                 (not date_elements_dict.get("date"))
                 and bool(re.search(r"\d", val))
                 and (
-                    val.split(re.sub("\D", "", val))[1].lower()
+                    val.split(re.sub(r"\D", "", val))[1].lower()
                     in ["st", "nd", "rd", "th"]
                     or val.isdigit()
                 )
-                and 1 <= int(re.sub("\D", "", val)) <= 31
+                and 1 <= int(re.sub(r"\D", "", val)) <= 31
             ):
-                date_elements_dict.update({"date": re.sub("\D", "", val)})
+                date_elements_dict.update({"date": re.sub(r"\D", "", val)})
                 removable_date_filters.append(val)
                 continue
             if (
@@ -52,7 +54,8 @@ def get_date_elements_from_filters(filter_string):
                 and len(val) >= 3
             ):
                 if val.lower() in month_dict.keys():
-                    date_elements_dict.update({"month": month_dict.get(val.lower())})
+                    date_elements_dict.update(
+                        {"month": month_dict.get(val.lower())})
                     removable_date_filters.append(val)
                 else:
                     for month_name in month_dict.keys():
@@ -75,7 +78,8 @@ def filter_photos_queryset(filters, queryset, library_id=None):
         ]
         queryset = queryset.filter(library__id=library_id)
 
-    date_elements_dict, removable_date_filters = get_date_elements_from_filters(filters)
+    date_elements_dict, removable_date_filters = get_date_elements_from_filters(
+        filters)
     selected_tag_id = None
     for filter_val in filters:
         if ":" in filter_val:
@@ -124,7 +128,8 @@ def filter_photos_queryset(filters, queryset, library_id=None):
                 queryset = queryset.filter(id=val)
         else:
             if filter_val not in removable_date_filters:
-                queryset = queryset.filter(photo_tags__tag__name__icontains=filter_val)
+                queryset = queryset.filter(
+                    photo_tags__tag__name__icontains=filter_val)
                 if (not selected_tag_id) and Tag.objects.filter(
                     name__icontains=filter_val
                 ).exists():

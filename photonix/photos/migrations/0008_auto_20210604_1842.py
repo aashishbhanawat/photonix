@@ -28,21 +28,25 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='phototag',
             name='source',
-            field=models.CharField(choices=[('H', 'Human'), ('C', 'Computer')], db_index=True, max_length=1),
+            field=models.CharField(
+                choices=[('H', 'Human'), ('C', 'Computer')], db_index=True, max_length=1),
         ),
         migrations.AlterField(
             model_name='tag',
             name='source',
-            field=models.CharField(choices=[('H', 'Human'), ('C', 'Computer')], db_index=True, max_length=1),
+            field=models.CharField(
+                choices=[('H', 'Human'), ('C', 'Computer')], db_index=True, max_length=1),
         ),
         migrations.AlterField(
             model_name='tag',
             name='type',
-            field=models.CharField(choices=[('L', 'Location'), ('O', 'Object'), ('F', 'Face'), ('C', 'Color'), ('S', 'Style'), ('G', 'Generic'), ('E', 'Event')], db_index=True, max_length=1, null=True),
+            field=models.CharField(choices=[('L', 'Location'), ('O', 'Object'), ('F', 'Face'), ('C', 'Color'), (
+                'S', 'Style'), ('G', 'Generic'), ('E', 'Event')], db_index=True, max_length=1, null=True),
         ),
         migrations.AlterField(
             model_name='task',
             name='status',
-            field=models.CharField(choices=[('P', 'Pending'), ('S', 'Started'), ('C', 'Completed'), ('F', 'Failed')], db_index=True, default='P', max_length=1),
+            field=models.CharField(choices=[('P', 'Pending'), ('S', 'Started'), (
+                'C', 'Completed'), ('F', 'Failed')], db_index=True, default='P', max_length=1),
         ),
     ]

@@ -1,27 +1,27 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
 
-#MIT License
+# MIT License
 #
-#Copyright (c) 2018 Iván de Paz Centeno
+# Copyright (c) 2018 Iván de Paz Centeno
 #
-#Permission is hereby granted, free of charge, to any person obtaining a copy
-#of this software and associated documentation files (the "Software"), to deal
-#in the Software without restriction, including without limitation the rights
-#to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-#copies of the Software, and to permit persons to whom the Software is
-#furnished to do so, subject to the following conditions:
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
 #
-#The above copyright notice and this permission notice shall be included in all
-#copies or substantial portions of the Software.
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
 #
-#THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-#IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-#FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-#AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-#LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-#OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-#SOFTWARE.
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
 
 import tensorflow as tf
 
@@ -30,7 +30,7 @@ __author__ = "Iván de Paz Centeno"
 
 class Network(object):
 
-    def __init__(self, session, trainable: bool=True):
+    def __init__(self, session, trainable: bool = True):
         """
         Initializes the network.
         :param trainable: flag to determine if this network should be trainable or not.
@@ -48,7 +48,8 @@ class Network(object):
         Configures the network layers.
         It is usually done using the LayerFactory() class.
         """
-        raise NotImplementedError("This method must be implemented by the network.")
+        raise NotImplementedError(
+            "This method must be implemented by the network.")
 
     def add_layer(self, name: str, layer_output):
         """
@@ -59,7 +60,7 @@ class Network(object):
         self.__layers[name] = layer_output
         self.__last_layer_name = name
 
-    def get_layer(self, name: str=None):
+    def get_layer(self, name: str = None):
         """
         Retrieves the layer by its name.
         :param name: name of the layer to retrieve. If name is None, it will retrieve the last added layer to the
@@ -89,7 +90,8 @@ class Network(object):
                 with tf.compat.v1.variable_scope(layer_name, reuse=True):
                     for param_name, data in weights_values[layer_name].items():
                         try:
-                            var = tf.compat.v1.get_variable(param_name, use_resource=False)
+                            var = tf.compat.v1.get_variable(
+                                param_name, use_resource=False)
                             self._session.run(var.assign(data))
 
                         except ValueError:

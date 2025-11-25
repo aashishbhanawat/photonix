@@ -25,6 +25,5 @@
 
 from .mtcnn import MTCNN
 
-
 __author__ = "Iván de Paz Centeno"
-__version__= "0.1.0"
+__version__ = "0.1.0"

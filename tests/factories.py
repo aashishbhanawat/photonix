@@ -1,10 +1,11 @@
 from pathlib import Path
 
-from django.utils import timezone
 import factory
+from django.utils import timezone
 
 from photonix.accounts.models import User
-from photonix.photos.models import Library, LibraryUser, Photo, PhotoFile, Tag, PhotoTag, Task
+from photonix.photos.models import (Library, LibraryUser, Photo, PhotoFile,
+                                    PhotoTag, Tag, Task)
 
 
 class UserFactory(factory.django.DjangoModelFactory):

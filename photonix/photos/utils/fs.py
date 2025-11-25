@@ -1,11 +1,11 @@
 import errno
-from hashlib import md5
 import os
 import shutil
 import tempfile
+from hashlib import md5
 
-from django.conf import settings
 import requests
+from django.conf import settings
 
 
 def mkdir_p(path):

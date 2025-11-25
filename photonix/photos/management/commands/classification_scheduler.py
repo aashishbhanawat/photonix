@@ -12,9 +12,11 @@ class Command(BaseCommand):
 
     def run_scheduler(self):
         while True:
-            num_remaining = Task.objects.filter(type='classify_images', status='P').count()
+            num_remaining = Task.objects.filter(
+                type='classify_images', status='P').count()
             if num_remaining:
-                logger.info('{} photos remaining for classification'.format(num_remaining))
+                logger.info(
+                    '{} photos remaining for classification'.format(num_remaining))
                 process_classify_images_tasks()
             sleep(1)
 
