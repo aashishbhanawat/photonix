@@ -61,14 +61,16 @@ class ColorModel:
             if val >= min_score:
                 averaged_results[key] = val
 
-        sorted_results = sorted(averaged_results.items(), key=operator.itemgetter(1), reverse=True)
+        sorted_results = sorted(averaged_results.items(
+        ), key=operator.itemgetter(1), reverse=True)
         return sorted_results
 
     def color_distance(self, a, b):
         # Colors are list of 3 floats (RGB) from 0.0 to 1.0
         a_h, a_s, a_v = rgb_to_hsv(a[0] / 255, a[1] / 255, a[2] / 255)
         b_h, b_s, b_v = rgb_to_hsv(b[0] / 255, b[1] / 255, b[2] / 255)
-        diff_h = 1 - abs(a_h - b_h)  # Hue is more highly weighted than saturation and value
+        # Hue is more highly weighted than saturation and value
+        diff_h = 1 - abs(a_h - b_h)
         diff_s = 1 - abs(a_s - b_s) * 0.5
         diff_v = 1 - abs(a_v - b_v) * 0.25
         score = diff_h * diff_s * diff_v
@@ -78,15 +80,18 @@ class ColorModel:
 def run_on_photo(photo_id):
     model = ColorModel()
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-    from photonix.classifiers.runners import results_for_model_on_photo, get_or_create_tag
+    from photonix.classifiers.runners import (get_or_create_tag,
+                                              results_for_model_on_photo)
     photo, results = results_for_model_on_photo(model, photo_id)
 
     if photo:
         from photonix.photos.models import PhotoTag
         photo.clear_tags(source='C', type='C')
         for name, score in results:
-            tag = get_or_create_tag(library=photo.library, name=name, type='C', source='C', ordering=model.colors[name][1])
-            PhotoTag(photo=photo, tag=tag, source='C', confidence=score, significance=score).save()
+            tag = get_or_create_tag(library=photo.library, name=name,
+                                    type='C', source='C', ordering=model.colors[name][1])
+            PhotoTag(photo=photo, tag=tag, source='C',
+                     confidence=score, significance=score).save()
 
     return photo, results
 

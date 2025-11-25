@@ -1,4 +1,5 @@
 from __future__ import unicode_literals
+
 from pathlib import Path
 
 from django.conf import settings
@@ -8,7 +9,6 @@ from django.utils import timezone
 
 from photonix.common.models import UUIDModel, VersionedModel
 from photonix.web.utils import logger
-
 
 User = get_user_model()
 
@@ -21,13 +21,20 @@ LIBRARY_SETUP_STAGE_COMPLETED_CHOICES = (
 
 
 class Library(UUIDModel, VersionedModel):
-    name = models.CharField(max_length=128, help_text='Display name of the library')
-    classification_color_enabled = models.BooleanField(default=False, help_text='Run color analysis on photos?')
-    classification_location_enabled = models.BooleanField(default=False, help_text='Run location detection on photos?')
-    classification_style_enabled = models.BooleanField(default=False, help_text='Run style classification on photos?')
-    classification_object_enabled = models.BooleanField(default=False, help_text='Run object detection on photos?')
-    classification_face_enabled = models.BooleanField(default=False, help_text='Run face detection on photos?')
-    setup_stage_completed = models.CharField(max_length=2, choices=LIBRARY_SETUP_STAGE_COMPLETED_CHOICES, blank=True, null=True, help_text='Where the user got to during onboarding setup')
+    name = models.CharField(
+        max_length=128, help_text='Display name of the library')
+    classification_color_enabled = models.BooleanField(
+        default=False, help_text='Run color analysis on photos?')
+    classification_location_enabled = models.BooleanField(
+        default=False, help_text='Run location detection on photos?')
+    classification_style_enabled = models.BooleanField(
+        default=False, help_text='Run style classification on photos?')
+    classification_object_enabled = models.BooleanField(
+        default=False, help_text='Run object detection on photos?')
+    classification_face_enabled = models.BooleanField(
+        default=False, help_text='Run face detection on photos?')
+    setup_stage_completed = models.CharField(max_length=2, choices=LIBRARY_SETUP_STAGE_COMPLETED_CHOICES,
+                                             blank=True, null=True, help_text='Where the user got to during onboarding setup')
 
     class Meta:
         verbose_name_plural = 'Libraries'
@@ -56,15 +63,24 @@ LIBRARY_PATH_BACKEND_TYPE_CHOICES = (
 
 
 class LibraryPath(UUIDModel, VersionedModel):
-    library = models.ForeignKey(Library, related_name='paths', on_delete=models.CASCADE)
-    type = models.CharField(max_length=2, choices=LIBRARY_PATH_TYPE_CHOICES, help_text='What type of path this is')
-    backend_type = models.CharField(max_length=2, choices=LIBRARY_PATH_BACKEND_TYPE_CHOICES, help_text='What type of storage to use for imported photos')
-    path = models.CharField(max_length=128, help_text='Path for storing photos - local path or bucket name')
-    url = models.CharField(max_length=128, blank=True, null=True, help_text='If a public-facing URL is available to access block storage, client will use this to download photos')
-    delete_after_import = models.BooleanField(default=False, help_text='Remove the photo from import_path after import succeeded?')
-    watch_for_changes = models.BooleanField(default=False, help_text='Watch import_path for local filesystem changes?')
-    s3_access_key_id = models.CharField(max_length=20, blank=True, null=True, help_text='AWS S3 (or compatible) access key ID')
-    s3_secret_key = models.CharField(max_length=40, blank=True, null=True, help_text='AWS S3 (or compatible) secret key')
+    library = models.ForeignKey(
+        Library, related_name='paths', on_delete=models.CASCADE)
+    type = models.CharField(
+        max_length=2, choices=LIBRARY_PATH_TYPE_CHOICES, help_text='What type of path this is')
+    backend_type = models.CharField(max_length=2, choices=LIBRARY_PATH_BACKEND_TYPE_CHOICES,
+                                    help_text='What type of storage to use for imported photos')
+    path = models.CharField(
+        max_length=128, help_text='Path for storing photos - local path or bucket name')
+    url = models.CharField(max_length=128, blank=True, null=True,
+                           help_text='If a public-facing URL is available to access block storage, client will use this to download photos')
+    delete_after_import = models.BooleanField(
+        default=False, help_text='Remove the photo from import_path after import succeeded?')
+    watch_for_changes = models.BooleanField(
+        default=False, help_text='Watch import_path for local filesystem changes?')
+    s3_access_key_id = models.CharField(
+        max_length=20, blank=True, null=True, help_text='AWS S3 (or compatible) access key ID')
+    s3_secret_key = models.CharField(
+        max_length=40, blank=True, null=True, help_text='AWS S3 (or compatible) secret key')
 
     def rescan(self):
         from photonix.photos.utils.organise import import_photos_in_place
@@ -74,9 +90,12 @@ class LibraryPath(UUIDModel, VersionedModel):
 
 
 class LibraryUser(UUIDModel, VersionedModel):
-    library = models.ForeignKey(Library, related_name='users', on_delete=models.CASCADE)
-    user = models.ForeignKey(User, related_name='libraries', on_delete=models.CASCADE)
-    owner = models.BooleanField(default=False, help_text='This User is responsible for this Library\'s settings and maintenance')
+    library = models.ForeignKey(
+        Library, related_name='users', on_delete=models.CASCADE)
+    user = models.ForeignKey(
+        User, related_name='libraries', on_delete=models.CASCADE)
+    owner = models.BooleanField(
+        default=False, help_text='This User is responsible for this Library\'s settings and maintenance')
 
     class Meta:
         unique_together = [['library', 'user']]
@@ -86,7 +105,8 @@ class LibraryUser(UUIDModel, VersionedModel):
 
 
 class Camera(UUIDModel, VersionedModel):
-    library = models.ForeignKey(Library, related_name='cameras', on_delete=models.CASCADE)
+    library = models.ForeignKey(
+        Library, related_name='cameras', on_delete=models.CASCADE)
     make = models.CharField(max_length=128)
     model = models.CharField(max_length=128)
     earliest_photo = models.DateTimeField()
@@ -101,7 +121,8 @@ class Camera(UUIDModel, VersionedModel):
 
 
 class Lens(UUIDModel, VersionedModel):
-    library = models.ForeignKey(Library, related_name='lenses', on_delete=models.CASCADE)
+    library = models.ForeignKey(
+        Library, related_name='lenses', on_delete=models.CASCADE)
     name = models.CharField(max_length=128)
     earliest_photo = models.DateTimeField()
     latest_photo = models.DateTimeField()
@@ -115,27 +136,34 @@ class Lens(UUIDModel, VersionedModel):
 
 
 class Photo(UUIDModel, VersionedModel):
-    library = models.ForeignKey(Library, related_name='photos', on_delete=models.CASCADE)
+    library = models.ForeignKey(
+        Library, related_name='photos', on_delete=models.CASCADE)
     visible = models.BooleanField(default=False)
     taken_at = models.DateTimeField(null=True)
     taken_by = models.CharField(max_length=128, blank=True, null=True)
     aperture = models.DecimalField(max_digits=3, decimal_places=1, null=True)
     exposure = models.CharField(max_length=8, blank=True, null=True)
     iso_speed = models.PositiveIntegerField(null=True)
-    focal_length = models.DecimalField(max_digits=4, decimal_places=1, null=True)
+    focal_length = models.DecimalField(
+        max_digits=4, decimal_places=1, null=True)
     flash = models.BooleanField(null=True)
     metering_mode = models.CharField(max_length=64, null=True)
     drive_mode = models.CharField(max_length=64, null=True)
     shooting_mode = models.CharField(max_length=64, null=True)
-    camera = models.ForeignKey(Camera, related_name='photos', null=True, on_delete=models.CASCADE)
-    lens = models.ForeignKey(Lens, related_name='photos', null=True, on_delete=models.CASCADE)
+    camera = models.ForeignKey(
+        Camera, related_name='photos', null=True, on_delete=models.CASCADE)
+    lens = models.ForeignKey(Lens, related_name='photos',
+                             null=True, on_delete=models.CASCADE)
     latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True)
     longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True)
     altitude = models.DecimalField(max_digits=6, decimal_places=1, null=True)
     star_rating = models.PositiveIntegerField(
         help_text='assign rating to photo', verbose_name="Rating", null=True, blank=True)
-    preferred_photo_file = models.ForeignKey('PhotoFile', related_name='+', null=True, on_delete=models.SET_NULL)  # File selected by the user that is the best version to be used
-    thumbnailed_version = models.PositiveIntegerField(default=0)  # Version from photos.utils.thumbnails.THUMBNAILER_VERSION at time of generating the required thumbnails declared in settings.THUMBNAIL_SIZES
+    # File selected by the user that is the best version to be used
+    preferred_photo_file = models.ForeignKey(
+        'PhotoFile', related_name='+', null=True, on_delete=models.SET_NULL)
+    # Version from photos.utils.thumbnails.THUMBNAILER_VERSION at time of generating the required thumbnails declared in settings.THUMBNAIL_SIZES
+    thumbnailed_version = models.PositiveIntegerField(default=0)
     deleted = models.BooleanField(default=False)
 
     class Meta:
@@ -195,18 +223,22 @@ class Photo(UUIDModel, VersionedModel):
 
 
 class PhotoFile(UUIDModel, VersionedModel):
-    photo = models.ForeignKey(Photo, related_name='files', on_delete=models.CASCADE)
+    photo = models.ForeignKey(
+        Photo, related_name='files', on_delete=models.CASCADE)
     path = models.CharField(max_length=512)
     width = models.PositiveIntegerField(null=True)
     height = models.PositiveIntegerField(null=True)
     mimetype = models.CharField(max_length=32, blank=True, null=True)
     file_modified_at = models.DateTimeField()
     bytes = models.PositiveIntegerField()
-    thumbnailed_version = models.PositiveIntegerField(default=0)  # Version from photos.utils.thumbnails.THUMBNAILER_VERSION at time of generating the required thumbnails declared in settings.THUMBNAIL_SIZES
+    # Version from photos.utils.thumbnails.THUMBNAILER_VERSION at time of generating the required thumbnails declared in settings.THUMBNAIL_SIZES
+    thumbnailed_version = models.PositiveIntegerField(default=0)
     raw_processed = models.BooleanField(default=False)
     raw_version = models.PositiveIntegerField(null=True)
-    raw_external_params = models.CharField(max_length=32, blank=True, null=True)
-    raw_external_version = models.CharField(max_length=32, blank=True, null=True)
+    raw_external_params = models.CharField(
+        max_length=32, blank=True, null=True)
+    raw_external_version = models.CharField(
+        max_length=32, blank=True, null=True)
     rotation = models.PositiveIntegerField(null=True, default=0)
 
     def __str__(self):
@@ -231,22 +263,26 @@ SOURCE_CHOICES = (
 )
 TAG_TYPE_CHOICES = (
     ('A', 'Album'),  # Assigned to an album by user
-    ('C', 'Color'), # Color detected by classifier
+    ('C', 'Color'),  # Color detected by classifier
     ('E', 'Event'),  # Image creation date matches a festival or type of event
-    ('F', 'Face'), # Face detected by classifier
+    ('F', 'Face'),  # Face detected by classifier
     ('G', 'Generic'),  # Tags assigned by user
-    ('L', 'Location'), # Location detected using GPS coordinates by classifier
-    ('O', 'Object'), # Object detected by classifier
+    ('L', 'Location'),  # Location detected using GPS coordinates by classifier
+    ('O', 'Object'),  # Object detected by classifier
     ('S', 'Style'),  # See Karayev et al.: Recognizing Image Style
 )
 
 
 class Tag(UUIDModel, VersionedModel):
-    library = models.ForeignKey(Library, related_name='tags', on_delete=models.CASCADE)
+    library = models.ForeignKey(
+        Library, related_name='tags', on_delete=models.CASCADE)
     name = models.CharField(max_length=128)
-    parent = models.ForeignKey('Tag', related_name='+', null=True, on_delete=models.CASCADE)
-    type = models.CharField(max_length=1, choices=TAG_TYPE_CHOICES, null=True, db_index=True)
-    source = models.CharField(max_length=1, choices=SOURCE_CHOICES, db_index=True)
+    parent = models.ForeignKey(
+        'Tag', related_name='+', null=True, on_delete=models.CASCADE)
+    type = models.CharField(
+        max_length=1, choices=TAG_TYPE_CHOICES, null=True, db_index=True)
+    source = models.CharField(
+        max_length=1, choices=SOURCE_CHOICES, db_index=True)
     ordering = models.FloatField(null=True)
 
     class Meta:
@@ -258,11 +294,16 @@ class Tag(UUIDModel, VersionedModel):
 
 
 class PhotoTag(UUIDModel, VersionedModel):
-    photo = models.ForeignKey(Photo, related_name='photo_tags', on_delete=models.CASCADE, null=True)
-    tag = models.ForeignKey(Tag, related_name='photo_tags', on_delete=models.CASCADE)
-    source = models.CharField(max_length=1, choices=SOURCE_CHOICES, db_index=True)
-    model_version = models.PositiveIntegerField(default=0, help_text='Version number of classifier model if source is Computer (YYYYMMDD)')
-    retrained_model_version = models.PositiveBigIntegerField(default=0, help_text='If classifier has models that are re-trained locally (e.g. Face) then we want to store this too (YYYYMMDDHHMMSS)')
+    photo = models.ForeignKey(
+        Photo, related_name='photo_tags', on_delete=models.CASCADE, null=True)
+    tag = models.ForeignKey(
+        Tag, related_name='photo_tags', on_delete=models.CASCADE)
+    source = models.CharField(
+        max_length=1, choices=SOURCE_CHOICES, db_index=True)
+    model_version = models.PositiveIntegerField(
+        default=0, help_text='Version number of classifier model if source is Computer (YYYYMMDD)')
+    retrained_model_version = models.PositiveBigIntegerField(
+        default=0, help_text='If classifier has models that are re-trained locally (e.g. Face) then we want to store this too (YYYYMMDDHHMMSS)')
     confidence = models.FloatField()
     significance = models.FloatField(null=True)
     verified = models.BooleanField(default=False)
@@ -294,12 +335,15 @@ TASK_STATUS_CHOICES = (
 class Task(UUIDModel, VersionedModel):
     type = models.CharField(max_length=128, db_index=True)
     subject_id = models.UUIDField(db_index=True)
-    status = models.CharField(max_length=1, choices=TASK_STATUS_CHOICES, default='P', db_index=True)
+    status = models.CharField(
+        max_length=1, choices=TASK_STATUS_CHOICES, default='P', db_index=True)
     started_at = models.DateTimeField(null=True)
     finished_at = models.DateTimeField(null=True)
-    parent = models.ForeignKey('self', related_name='children', null=True, on_delete=models.CASCADE)
+    parent = models.ForeignKey(
+        'self', related_name='children', null=True, on_delete=models.CASCADE)
     complete_with_children = models.BooleanField(default=False)
-    library = models.ForeignKey(Library, related_name='task_library', on_delete=models.CASCADE, null=True, blank=True)
+    library = models.ForeignKey(
+        Library, related_name='task_library', on_delete=models.CASCADE, null=True, blank=True)
 
     class Meta:
         ordering = ['created_at']
@@ -320,7 +364,8 @@ class Task(UUIDModel, VersionedModel):
 
         # Create next task in the chain if there should be one
         if not self.parent and next_type:
-            Task(type=next_type, subject_id=next_subject_id, library=self.library).save()
+            Task(type=next_type, subject_id=next_subject_id,
+                 library=self.library).save()
 
         if self.parent and self.parent.complete_with_children:
             # If all siblings are complete, we should mark our parent as complete

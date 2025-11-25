@@ -2,12 +2,12 @@ import os
 import time
 from datetime import datetime
 from pathlib import Path
-
-from django.conf import settings
-from PIL import Image
 from unittest import mock
+
 import fakeredis
 import pytest
+from django.conf import settings
+from PIL import Image
 
 
 @pytest.fixture(autouse=True)
@@ -15,6 +15,7 @@ def mock_redis():
     with mock.patch('redis.Redis', fakeredis.FakeRedis):
         with mock.patch('photonix.photos.utils.redis.redis_connection', fakeredis.FakeRedis()):
             yield
+
 
 def test_downloading(tmpdir):
     from photonix.classifiers.style.model import StyleModel
@@ -37,7 +38,8 @@ def test_color_predict():
     model = ColorModel()
     snow = str(Path(__file__).parent / 'photos' / 'snow.jpg')
     result = model.predict(snow)
-    expected = [('Red', '0.163'), ('Gray', '0.163'), ('Azure', '0.126'), ('Amber', '0.112'), ('Green', '0.104'), ('Magenta', '0.102'), ('Turquoise', '0.058'), ('Teal', '0.049'), ('Lime', '0.038'), ('Purple', '0.029'), ('Orchid', '0.019'), ('Yellow', '0.018'), ('White', '0.017')]
+    expected = [('Red', '0.163'), ('Gray', '0.163'), ('Azure', '0.126'), ('Amber', '0.112'), ('Green', '0.104'), ('Magenta', '0.102'), ('Turquoise',
+                                                                                                                                        '0.058'), ('Teal', '0.049'), ('Lime', '0.038'), ('Purple', '0.029'), ('Orchid', '0.019'), ('Yellow', '0.018'), ('White', '0.017')]
     actual = [(x, '{:.3f}'.format(y)) for x, y in result]
     assert expected == actual
 
@@ -45,11 +47,13 @@ def test_color_predict():
 @mock.patch('photonix.classifiers.color.model.ColorModel.predict')
 def test_color_predict_mock(mock_predict):
     from photonix.classifiers.color.model import ColorModel
-    mock_predict.return_value = [['Red', 0.163], ['Gray', 0.163], ['Azure', 0.126], ['Amber', 0.112], ['Green', 0.104], ['Magenta', 0.102], ['Turquoise', 0.058], ['Teal', 0.049], ['Lime', 0.038], ['Purple', 0.029], ['Orchid', 0.019], ['Yellow', 0.018], ['White', 0.017]]
+    mock_predict.return_value = [['Red', 0.163], ['Gray', 0.163], ['Azure', 0.126], ['Amber', 0.112], ['Green', 0.104], ['Magenta', 0.102], [
+        'Turquoise', 0.058], ['Teal', 0.049], ['Lime', 0.038], ['Purple', 0.029], ['Orchid', 0.019], ['Yellow', 0.018], ['White', 0.017]]
     model = ColorModel()
     snow = str(Path(__file__).parent / 'photos' / 'snow.jpg')
     result = model.predict(snow)
-    expected = [('Red', '0.163'), ('Gray', '0.163'), ('Azure', '0.126'), ('Amber', '0.112'), ('Green', '0.104'), ('Magenta', '0.102'), ('Turquoise', '0.058'), ('Teal', '0.049'), ('Lime', '0.038'), ('Purple', '0.029'), ('Orchid', '0.019'), ('Yellow', '0.018'), ('White', '0.017')]
+    expected = [('Red', '0.163'), ('Gray', '0.163'), ('Azure', '0.126'), ('Amber', '0.112'), ('Green', '0.104'), ('Magenta', '0.102'), ('Turquoise',
+                                                                                                                                        '0.058'), ('Teal', '0.049'), ('Lime', '0.038'), ('Purple', '0.029'), ('Orchid', '0.019'), ('Yellow', '0.018'), ('White', '0.017')]
     actual = [(x, '{:.3f}'.format(y)) for x, y in result]
     assert expected == actual
 
@@ -95,7 +99,8 @@ def test_location_predict():
 @mock.patch('photonix.classifiers.object.model.ObjectModel.predict')
 def test_object_predict(mock_predict):
     from photonix.classifiers.object.model import ObjectModel
-    mock_predict.return_value = [{'label': 'Tree', 'score': 0.602, 'significance': 0.134, 'x': 0.787, 'y': 0.374, 'width': 0.340, 'height': 0.655}, {'label': 'Tree', 'score': 0.525, 'significance': 0.016}, {'label': 'Tree', 'score': 0.453, 'significance': 0.025}]
+    mock_predict.return_value = [{'label': 'Tree', 'score': 0.602, 'significance': 0.134, 'x': 0.787, 'y': 0.374, 'width': 0.340, 'height': 0.655}, {
+        'label': 'Tree', 'score': 0.525, 'significance': 0.016}, {'label': 'Tree', 'score': 0.453, 'significance': 0.025}]
 
     model = ObjectModel()
     snow = str(Path(__file__).parent / 'photos' / 'snow.jpg')
@@ -148,8 +153,9 @@ def test_style_predict(mock_predict):
 @mock.patch('photonix.classifiers.face.deepface.commons.functions.find_input_shape')
 def test_face_predict(mock_find_input_shape, mock_find_euclidean_distance, mock_init, mock_get_face_embedding, mock_brute_force, mock_ann, mock_retrain):
     mock_find_input_shape.return_value = (224, 224)
+    from photonix.classifiers.face.deepface.commons.distance import \
+        findEuclideanDistance
     from photonix.classifiers.face.model import FaceModel
-    from photonix.classifiers.face.deepface.commons.distance import findEuclideanDistance
 
     # Set up mock return values
     mock_init.return_value = None
@@ -193,14 +199,16 @@ def test_face_predict(mock_find_input_shape, mock_find_euclidean_distance, mock_
         embedding = model.get_face_embedding(image_data)
         embedding_cache.append(embedding)
 
-    training_data = [(i, embedding) for i, embedding in enumerate(embedding_cache)]
+    training_data = [(i, embedding)
+                     for i, embedding in enumerate(embedding_cache)]
 
     # Compare test faces using brute force Euclidian calculations
     for fn, expected_nearest, expected_distance in TEST_FACES:
         path = str(Path(__file__).parent / 'photos' / 'faces' / fn)
         image_data = Image.open(path)
         embedding = model.get_face_embedding(image_data)
-        nearest, distance = model.find_closest_face_tag_by_brute_force(embedding, target_data=training_data)
+        nearest, distance = model.find_closest_face_tag_by_brute_force(
+            embedding, target_data=training_data)
 
         assert nearest == expected_nearest
         assert '{:.3f}'.format(distance) == expected_distance
