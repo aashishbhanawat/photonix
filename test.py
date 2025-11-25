@@ -1,10 +1,9 @@
 import os
-from pathlib import Path
 import sys
+from pathlib import Path
 
 import pytest
 import tensorflow as tf
-
 
 sys.path.insert(0, str(Path(__file__).parent.resolve()))
 os.environ['ENV'] = 'test'

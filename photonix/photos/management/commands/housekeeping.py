@@ -26,9 +26,11 @@ class Command(BaseCommand):
             pass
 
         # Regenerate any outdated thumbnails
-        photos = Photo.objects.filter(thumbnailed_version__lt=THUMBNAILER_VERSION)
+        photos = Photo.objects.filter(
+            thumbnailed_version__lt=THUMBNAILER_VERSION)
         if photos.count():
-            logger.info(f'Rescheduling {photos.count()} photos to have their thumbnails regenerated')
+            logger.info(
+                f'Rescheduling {photos.count()} photos to have their thumbnails regenerated')
             for photo in photos:
                 Task(
                     type='generate_thumbnails', subject_id=photo.id,

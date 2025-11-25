@@ -10,7 +10,6 @@ from photonix.photos.utils.raw import process_raw_task
 from photonix.photos.utils.tasks import requeue_stuck_tasks
 from photonix.web.utils import logger
 
-
 q = queue.Queue()
 
 
@@ -44,9 +43,11 @@ class Command(BaseCommand):
             while True:
                 requeue_stuck_tasks('process_raw')
 
-                num_remaining = Task.objects.filter(type='process_raw', status='P').count()
+                num_remaining = Task.objects.filter(
+                    type='process_raw', status='P').count()
                 if num_remaining:
-                    logger.info(f'{num_remaining} tasks remaining for raw processing')
+                    logger.info(
+                        f'{num_remaining} tasks remaining for raw processing')
 
                 # Load 'Pending' tasks onto worker threads
                 for task in Task.objects.filter(type='process_raw', status='P')[:64]:

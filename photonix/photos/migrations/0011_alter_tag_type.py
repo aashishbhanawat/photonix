@@ -13,6 +13,7 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='tag',
             name='type',
-            field=models.CharField(choices=[('L', 'Location'), ('O', 'Object'), ('F', 'Face'), ('C', 'Color'), ('S', 'Style'), ('G', 'Generic'), ('E', 'Event'), ('A', 'Album')], db_index=True, max_length=1, null=True),
+            field=models.CharField(choices=[('L', 'Location'), ('O', 'Object'), ('F', 'Face'), ('C', 'Color'), (
+                'S', 'Style'), ('G', 'Generic'), ('E', 'Event'), ('A', 'Album')], db_index=True, max_length=1, null=True),
         ),
     ]

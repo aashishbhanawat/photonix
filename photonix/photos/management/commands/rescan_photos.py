@@ -2,8 +2,8 @@ from django.conf import settings
 from django.core.management.base import BaseCommand
 from redis_lock import Lock
 
-from photonix.photos.utils.redis import redis_connection
 from photonix.photos.utils.organise import rescan_photo_libraries
+from photonix.photos.utils.redis import redis_connection
 from photonix.photos.utils.system import missing_system_dependencies
 from photonix.web.utils import logger
 

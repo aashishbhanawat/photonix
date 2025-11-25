@@ -1,17 +1,18 @@
 import csv
 import math
-from pathlib import Path
 import sys
+from pathlib import Path
 
 import matplotlib.path as mpltPath
 import shapefile
 
-from photonix.photos.utils.metadata import PhotoMetadata, parse_gps_location
 from photonix.classifiers.base_model import BaseModel
+from photonix.photos.utils.metadata import PhotoMetadata, parse_gps_location
 
-
-WORLD_FILE = Path('location') / 'TM_WORLD_BORDERS-0.3.shp'  # http://thematicmapping.org/downloads/world_borders.php
-CITIES_FILE = Path('location') / 'cities1000.txt'  # http://download.geonames.org/export/dump/
+# http://thematicmapping.org/downloads/world_borders.php
+WORLD_FILE = Path('location') / 'TM_WORLD_BORDERS-0.3.shp'
+# http://download.geonames.org/export/dump/
+CITIES_FILE = Path('location') / 'cities1000.txt'
 
 
 class LocationModel(BaseModel):
@@ -46,7 +47,8 @@ class LocationModel(BaseModel):
             lon, lat = location
         else:
             metadata = PhotoMetadata(image_file)
-            location = metadata.get('GPS Position') and parse_gps_location(metadata.get('GPS Position')) or None
+            location = metadata.get('GPS Position') and parse_gps_location(
+                metadata.get('GPS Position')) or None
             if location:
                 lon, lat = location
             else:
@@ -57,7 +59,8 @@ class LocationModel(BaseModel):
 
         country = self.get_country(lon=lon, lat=lat)
         if country:
-            city = self.get_city(lon=lon, lat=lat, country_code=country['code'])
+            city = self.get_city(
+                lon=lon, lat=lat, country_code=country['code'])
         else:
             city = self.get_city(lon=lon, lat=lat)
 
@@ -107,7 +110,8 @@ class LocationModel(BaseModel):
                 longitude = float(row[4])
                 latitude = float(row[5])
 
-                distance = int(self.haversine([lon, lat], [longitude, latitude]))
+                distance = int(self.haversine(
+                    [lon, lat], [longitude, latitude]))
                 if distance < 10000:
                     population = int(row[14])
                     if population > largest_population:
@@ -159,7 +163,8 @@ class LocationModel(BaseModel):
         dphi = math.radians(lat2 - lat1)
         dlambda = math.radians(lon2 - lon1)
 
-        a = math.sin(dphi/2)**2 + math.cos(phi1) * math.cos(phi2)*math.sin(dlambda/2)**2
+        a = math.sin(dphi/2)**2 + math.cos(phi1) * \
+            math.cos(phi2)*math.sin(dlambda/2)**2
         return 2*R*math.atan2(math.sqrt(a), math.sqrt(1 - a))
 
     def export_country_kml(self, country, path):
@@ -202,17 +207,22 @@ class LocationModel(BaseModel):
 def run_on_photo(photo_id):
     model = LocationModel()
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-    from photonix.classifiers.runners import results_for_model_on_photo, get_or_create_tag
+    from photonix.classifiers.runners import (get_or_create_tag,
+                                              results_for_model_on_photo)
     photo, results = results_for_model_on_photo(model, photo_id)
 
     if photo and results['country']:
         from photonix.photos.models import PhotoTag
         photo.clear_tags(source='C', type='L')
-        country_tag = get_or_create_tag(library=photo.library, name=results['country']['name'], type='L', source='C')
-        PhotoTag(photo=photo, tag=country_tag, source='C', confidence=1.0, significance=1.0).save()
+        country_tag = get_or_create_tag(
+            library=photo.library, name=results['country']['name'], type='L', source='C')
+        PhotoTag(photo=photo, tag=country_tag, source='C',
+                 confidence=1.0, significance=1.0).save()
         if results['city']:
-            city_tag = get_or_create_tag(library=photo.library, name=results['city']['name'], type='L', source='C', parent=country_tag)
-            PhotoTag(photo=photo, tag=city_tag, source='C', confidence=0.5, significance=0.5).save()
+            city_tag = get_or_create_tag(
+                library=photo.library, name=results['city']['name'], type='L', source='C', parent=country_tag)
+            PhotoTag(photo=photo, tag=city_tag, source='C',
+                     confidence=0.5, significance=0.5).save()
 
     return photo, results
 
