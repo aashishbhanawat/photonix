@@ -25,6 +25,8 @@ class Library(UUIDModel, VersionedModel):
         max_length=128, help_text='Display name of the library')
     classification_color_enabled = models.BooleanField(
         default=False, help_text='Run color analysis on photos?')
+    classification_event_enabled = models.BooleanField(
+        default=False, help_text='Run event detection on photos?')
     classification_location_enabled = models.BooleanField(
         default=False, help_text='Run location detection on photos?')
     classification_style_enabled = models.BooleanField(

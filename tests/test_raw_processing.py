@@ -3,16 +3,12 @@ from pathlib import Path
 
 import pytest
 from django.conf import settings
-from django.utils import timezone
-
-from photonix.photos.models import PhotoFile, Task
+from photonix.photos.models import PhotoFile
 from photonix.photos.utils.fs import download_file
-from photonix.photos.utils.raw import (ensure_raw_processing_tasks,
-                                       generate_jpeg, identified_as_jpeg,
-                                       process_raw_tasks)
-from photonix.photos.utils.thumbnails import process_generate_thumbnails_tasks
+from photonix.photos.utils.raw import (generate_jpeg, identified_as_jpeg)
 
 from .factories import LibraryFactory
+from photonix.photos.tasks import process_raw_task
 
 PHOTOS = [
     # -e argument to dcraw means JPEG was extracted without any processing
@@ -88,41 +84,15 @@ def photo_fixture_raw(db):
     return record_photo(raw_photo_path, library)
 
 
-def test_task_raw_processing(photo_fixture_raw):
-    # Task should have been created for the fixture
-    task = Task.objects.get(type='ensure_raw_processed',
-                            status='P', subject_id=photo_fixture_raw.id)
-    assert (timezone.now() - task.created_at).seconds < 1
-    assert (timezone.now() - task.updated_at).seconds < 1
-    assert task.started_at == None
-    assert task.finished_at == None
-    assert task.status == 'P'
-    assert task.complete_with_children == True
+from photonix.photos.tasks import generate_thumbnails_task
+from unittest.mock import patch
+from celery import chain
 
-    # Calling this function should create a child task tp generate a JPEG from the raw file
-    ensure_raw_processing_tasks()
-    parent_task = Task.objects.get(
-        type='ensure_raw_processed', subject_id=photo_fixture_raw.id)
-    child_task = Task.objects.get(type='process_raw', parent=parent_task)
-    assert parent_task.status == 'S'
-    assert child_task.status == 'P'
-
-    # PhotoFile should have been created widthout dimensions as metadata for this photo doesn't include it
-    photo_file = PhotoFile.objects.get(id=child_task.subject_id)
-    assert photo_file.width is None
-
-    # Call the processing function
-    process_raw_tasks()
-
-    # Tasks should be now marked as completed
-    parent_task = Task.objects.get(
-        type='ensure_raw_processed', subject_id=photo_fixture_raw.id)
-    child_task = Task.objects.get(type='process_raw', parent=parent_task)
-    assert parent_task.status == 'C'
-    assert child_task.status == 'C'
-
+def test_process_raw_task(photo_fixture_raw):
     # PhotoFile object should have been updated to show raw file has been processed
-    photo_file = PhotoFile.objects.get(id=child_task.subject_id)
+    with patch('photonix.photos.tasks.classify_photo_task.s') as mock_task:
+        chain(process_raw_task.s(photo_id=photo_fixture_raw.id), generate_thumbnails_task.s()).apply_async()
+    photo_file = PhotoFile.objects.get(photo=photo_fixture_raw)
     assert photo_file.raw_processed == True
     assert photo_file.raw_version == 20190305
     assert photo_file.raw_external_params == 'dcraw -w'
@@ -135,24 +105,6 @@ def test_task_raw_processing(photo_fixture_raw):
     assert os.stat(output_path).st_size > 1024 * \
         1024  # JPEG greater than 1MB in size
     assert photo_file.width == 3684  # Width should now be set
-
-    # Thumbnailing task should have been created as ensure_raw_processed and process_raw have completed
-    assert Task.objects.filter(
-        type='generate_thumbnails', subject_id=photo_fixture_raw.id).count() == 1
-    task = Task.objects.get(type='generate_thumbnails',
-                            subject_id=photo_fixture_raw.id)
-    assert (timezone.now() - task.created_at).seconds < 1
-    assert (timezone.now() - task.updated_at).seconds < 1
-    assert task.started_at == None
-    assert task.finished_at == None
-
-    # Process tasks to generate thumbnails which should add new task for classification
-    process_generate_thumbnails_tasks()
-    task = Task.objects.get(type='generate_thumbnails',
-                            subject_id=photo_fixture_raw.id)
-    assert task.status == 'C'
-    assert (timezone.now() - task.started_at).seconds < 10
-    assert (timezone.now() - task.finished_at).seconds < 1
 
     # Make sure thumbnails got generated
     for thumbnail in settings.THUMBNAIL_SIZES:

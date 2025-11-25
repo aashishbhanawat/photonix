@@ -14,40 +14,17 @@ from photonix.photos.utils.metadata import PhotoMetadata
 THUMBNAILER_VERSION = 20210321
 
 
-def process_generate_thumbnails_tasks():
-    for task in Task.objects.filter(type='generate_thumbnails', status='P').order_by('created_at'):
-        photo_id = task.subject_id
-        generate_thumbnails_for_photo(photo_id, task)
-
-
-def generate_thumbnails_for_photo(photo, task):
-    task.start()
-
-    if not isinstance(photo, Photo):
-        try:
-            photo = Photo.objects.get(id=photo)
-        except Photo.DoesNotExist:
-            task.failed(f'Photo instance does not exist with id={photo}')
-            return
+def generate_thumbnails_for_photo(photo_id):
+    photo = Photo.objects.get(id=photo_id)
 
     for thumbnail in settings.THUMBNAIL_SIZES:
         if thumbnail[4]:  # Required from the start
-            try:
-                get_thumbnail(photo=photo, width=thumbnail[0], height=thumbnail[1], crop=thumbnail[2],
-                              quality=thumbnail[3], force_regenerate=True, force_accurate=thumbnail[5])
-            except (FileNotFoundError, IndexError):
-                task.failed()
-                return
+            get_thumbnail(photo=photo, width=thumbnail[0], height=thumbnail[1], crop=thumbnail[2],
+                          quality=thumbnail[3], force_regenerate=True, force_accurate=thumbnail[5])
 
     if photo.thumbnailed_version < THUMBNAILER_VERSION:
         photo.thumbnailed_version = THUMBNAILER_VERSION
         photo.save()
-
-    # Complete task for photo and add next task for classifying images if this hasn't happened previously
-    if Task.objects.filter(type='classify_images', subject_id=photo.id).count() > 0:
-        task.complete()
-    else:
-        task.complete(next_type='classify_images', next_subject_id=photo.id)
 
 
 def get_thumbnail_path(photo_file_id, width=256, height=256, crop='cover', quality=75):

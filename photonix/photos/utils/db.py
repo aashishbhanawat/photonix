@@ -9,6 +9,8 @@ from decimal import Decimal
 
 from photonix.photos.models import (Camera, Lens, Library, Photo, PhotoFile,
                                     PhotoTag, Tag, Task)
+from photonix.photos.tasks import process_raw_task, generate_thumbnails_task, classify_photo_task
+from celery import chain
 from photonix.photos.utils.metadata import (PhotoMetadata, get_mimetype,
                                             parse_datetime, parse_gps_location)
 from photonix.web.utils import logger
@@ -207,12 +209,7 @@ def record_photo(path, library, inotify_event_type=None):
     photo_file.save()
 
     # Create task to ensure JPEG version of file exists (used for thumbnailing, analysing etc.)
-    Task(
-        type='ensure_raw_processed',
-        subject_id=photo.id,
-        complete_with_children=True,
-        library=photo.library
-    ).save()
+    chain(process_raw_task.s(photo_id=photo.id), generate_thumbnails_task.s(), classify_photo_task.s()).apply_async()
 
     return photo
 
