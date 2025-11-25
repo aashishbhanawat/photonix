@@ -11,7 +11,6 @@ from photonix.photos.utils.fs import (determine_destination,
                                       find_new_file_name, mkdir_p)
 from photonix.photos.utils.metadata import get_datetime
 
-
 SYNOLOGY_THUMBNAILS_DIR_NAME = '/@eaDir'
 
 
@@ -72,12 +71,14 @@ def determine_same_file(origpath, destpath, fhc=None):
     if os.path.splitext(origpath)[1][1:].lower() in ['jpg', 'jpeg', 'png', ]:
         orig_hash = fhc.get_file_hash(origpath, 'image')
         if not orig_hash:
-            orig_hash = md5(Image.open(StringIO(fhc.get_file(origpath, 'orig'))).tobytes()).hexdigest()
+            orig_hash = md5(Image.open(
+                StringIO(fhc.get_file(origpath, 'orig'))).tobytes()).hexdigest()
             fhc.set_file_hash(origpath, 'image', orig_hash)
 
         dest_hash = fhc.get_file_hash(destpath, 'image')
         if not dest_hash:
-            dest_hash = md5(Image.open(StringIO(fhc.get_file(destpath, 'dest'))).tobytes()).hexdigest()
+            dest_hash = md5(Image.open(
+                StringIO(fhc.get_file(destpath, 'dest'))).tobytes()).hexdigest()
             fhc.set_file_hash(destpath, 'image', dest_hash)
 
         if orig_hash == dest_hash:
@@ -93,6 +94,7 @@ def blacklisted_type(file):
     if file == '.DS_Store':
         return True
     return False
+
 
 def import_photos_from_dir(orig, move=False):
     imported = 0
@@ -153,7 +155,8 @@ def import_photos_from_dir(orig, move=False):
                     were_bad += 1
 
     if imported or were_duplicates:
-        print('\n{} PHOTOS IMPORTED\n{} WERE DUPLICATES\n{} WERE BAD'.format(imported, were_duplicates, were_bad))
+        print('\n{} PHOTOS IMPORTED\n{} WERE DUPLICATES\n{} WERE BAD'.format(
+            imported, were_duplicates, were_bad))
 
 
 def import_photos_in_place(library_path):

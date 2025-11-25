@@ -5,7 +5,6 @@ from photonix.classifiers.face import run_on_photo
 from photonix.photos.utils.classification import ThreadedQueueProcessor
 from photonix.web.utils import logger
 
-
 model = None
 
 
@@ -15,7 +14,8 @@ class Command(BaseCommand):
     def run_processors(self):
         num_workers = 1
         batch_size = 64
-        threaded_queue_processor = ThreadedQueueProcessor(model, 'classify.face', run_on_photo, num_workers, batch_size)
+        threaded_queue_processor = ThreadedQueueProcessor(
+            model, 'classify.face', run_on_photo, num_workers, batch_size)
         threaded_queue_processor.run()
 
     def handle(self, *args, **options):

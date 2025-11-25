@@ -1,8 +1,8 @@
 import argparse
 import os
-import requests
 import shutil
 
+import requests
 
 # Mapping: (class, Name, groups)
 STYLE_MAPPING = [
@@ -74,7 +74,8 @@ def get_images_for_style(style, group_ids, image_path, num_images):
             # Make the request and ensure it succeeds.
             page_data = requests.get(url).json()
             if page_data['stat'] != 'ok':
-                raise Exception('Something is wrong: API returned {}'.format(page_data['stat']))
+                raise Exception(
+                    'Something is wrong: API returned {}'.format(page_data['stat']))
 
             for photo_item in page_data['photos']['photo']:
                 if len(images_info) >= num_images:
@@ -89,7 +90,8 @@ def get_images_for_style(style, group_ids, image_path, num_images):
     write_image_info(info_file_path, images_info)
 
     if len(images_info) < num_images:
-        raise Exception('Not enough images, only find {}'.format(len(images_info)))
+        raise Exception(
+            'Not enough images, only find {}'.format(len(images_info)))
 
 
 def _get_image_url(photo_item, size_flag=''):
@@ -131,7 +133,8 @@ def write_image_info(path, images_info):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(prog='PROG')
-    parser.add_argument('--image-path', nargs='?', default=os.path.join(os.path.dirname(__file__), 'images'))
+    parser.add_argument('--image-path', nargs='?',
+                        default=os.path.join(os.path.dirname(__file__), 'images'))
     parser.add_argument('--images-per-style', nargs='?', default=1000)
 
     vars = parser.parse_args()

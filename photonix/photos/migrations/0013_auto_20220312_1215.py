@@ -13,16 +13,19 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='phototag',
             name='source',
-            field=models.CharField(choices=[('C', 'Computer'), ('H', 'Human')], db_index=True, max_length=1),
+            field=models.CharField(
+                choices=[('C', 'Computer'), ('H', 'Human')], db_index=True, max_length=1),
         ),
         migrations.AlterField(
             model_name='tag',
             name='source',
-            field=models.CharField(choices=[('C', 'Computer'), ('H', 'Human')], db_index=True, max_length=1),
+            field=models.CharField(
+                choices=[('C', 'Computer'), ('H', 'Human')], db_index=True, max_length=1),
         ),
         migrations.AlterField(
             model_name='tag',
             name='type',
-            field=models.CharField(choices=[('A', 'Album'), ('C', 'Color'), ('E', 'Event'), ('F', 'Face'), ('G', 'Generic'), ('L', 'Location'), ('O', 'Object'), ('S', 'Style')], db_index=True, max_length=1, null=True),
+            field=models.CharField(choices=[('A', 'Album'), ('C', 'Color'), ('E', 'Event'), ('F', 'Face'), (
+                'G', 'Generic'), ('L', 'Location'), ('O', 'Object'), ('S', 'Style')], db_index=True, max_length=1, null=True),
         ),
     ]

@@ -10,7 +10,6 @@ from photonix.photos.utils.db import record_photo
 from photonix.photos.utils.fs import determine_destination, download_file
 from photonix.web.utils import logger
 
-
 User = get_user_model()
 
 

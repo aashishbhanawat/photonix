@@ -1,24 +1,24 @@
-from datetime import datetime
 import json
 import os
 import sys
+from datetime import datetime
 from pathlib import Path
 from random import randint
 
+import numpy as np
 from annoy import AnnoyIndex
 from django.utils import timezone
-import numpy as np
 from PIL import Image
 from redis_lock import Lock
 
 from photonix.classifiers.base_model import BaseModel
 from photonix.classifiers.face.deepface import DeepFace
-from photonix.classifiers.face.mtcnn import MTCNN
-from photonix.classifiers.face.deepface.commons.distance import findEuclideanDistance
+from photonix.classifiers.face.deepface.commons.distance import \
+    findEuclideanDistance
 from photonix.classifiers.face.deepface.DeepFace import build_model
-from photonix.photos.utils.redis import redis_connection
+from photonix.classifiers.face.mtcnn import MTCNN
+from photonix.photos.utils import redis
 from photonix.photos.utils.metadata import PhotoMetadata
-
 
 GRAPH_FILE = os.path.join('face', 'mtcnn_weights.npy')
 DISTANCE_THRESHOLD = 10
@@ -41,9 +41,8 @@ class FaceModel(BaseModel):
         if self.ensure_downloaded(lock_name=lock_name):
             self.graph = self.load_graph(graph_file)
 
-
     def load_graph(self, graph_file):
-        with Lock(redis_connection, 'classifier_{}_load_graph'.format(self.name)):
+        with Lock(redis.redis_connection, 'classifier_{}_load_graph'.format(self.name)):
             # Load MTCNN
             mtcnn_graph = None
             mtcnn_key = '{self.graph_cache_key}:mtcnn'
@@ -97,24 +96,27 @@ class FaceModel(BaseModel):
         ])
 
     def get_face_embedding(self, image_data):
-        return DeepFace.represent(np.asarray(image_data), model_name='Facenet', model= self.graph['facenet'])
+        return DeepFace.represent(np.asarray(image_data), model_name='Facenet', model=self.graph['facenet'])
 
     def find_closest_face_tag_by_ann(self, source_embedding):
         # Use ANN index to do quick serach if it has been trained by retrain_face_similarity_index
         from django.conf import settings
-        ann_path = Path(settings.MODEL_DIR) / 'face' / f'{self.library_id}_faces.ann'
-        tag_ids_path = Path(settings.MODEL_DIR) / 'face' / f'{self.library_id}_faces_tag_ids.json'
+        ann_path = Path(settings.MODEL_DIR) / 'face' / \
+            f'{self.library_id}_faces.ann'
+        tag_ids_path = Path(settings.MODEL_DIR) / 'face' / \
+            f'{self.library_id}_faces_tag_ids.json'
 
         if os.path.exists(ann_path) and os.path.exists(tag_ids_path):
             embedding_size = 128  # FaceNet output size
             t = AnnoyIndex(embedding_size, 'euclidean')
             # Ensure ANN index, tag IDs and version files can't be updated while we are reading
-            with Lock(redis_connection, 'face_model_retrain'):
+            with Lock(redis.redis_connection, 'face_model_retrain'):
                 self.reload_retrained_model_version()
                 t.load(str(ann_path))
                 with open(tag_ids_path) as f:
                     tag_ids = json.loads(f.read())
-            nearest = t.get_nns_by_vector(source_embedding, 1, include_distances=True)
+            nearest = t.get_nns_by_vector(
+                source_embedding, 1, include_distances=True)
             if nearest[0]:
                 return tag_ids[nearest[0][0]], nearest[1][0]
 
@@ -131,20 +133,24 @@ class FaceModel(BaseModel):
         else:
             # Collect all previously generated embeddings
             from photonix.photos.models import PhotoTag
-            photo_tags = PhotoTag.objects.filter(photo__library_id=self.library_id, tag__type='F')
+            photo_tags = PhotoTag.objects.filter(
+                photo__library_id=self.library_id, tag__type='F')
             if oldest_date:
                 photo_tags = photo_tags.filter(created_at__gt=oldest_date)
             for photo_tag in photo_tags:
                 try:
-                    tag_embedding = json.loads(photo_tag.extra_data)['facenet_embedding']
-                    representations.append((str(photo_tag.tag.id), tag_embedding))
+                    tag_embedding = json.loads(photo_tag.extra_data)[
+                        'facenet_embedding']
+                    representations.append(
+                        (str(photo_tag.tag.id), tag_embedding))
                 except (KeyError, json.decoder.JSONDecodeError):
                     pass
 
         # Calculate Euclidean distances
         distances = []
         for (_, target_embedding) in representations:
-            distance = findEuclideanDistance(source_embedding, target_embedding)
+            distance = findEuclideanDistance(
+                source_embedding, target_embedding)
             distances.append(distance)
 
         # Return closest match and distance value
@@ -157,13 +163,16 @@ class FaceModel(BaseModel):
         if not self.library_id:
             raise ValueError('No Library ID is set')
 
-        ann_nearest, ann_distance = self.find_closest_face_tag_by_ann(source_embedding)
+        ann_nearest, ann_distance = self.find_closest_face_tag_by_ann(
+            source_embedding)
 
         oldest_date = None
         if self.retrained_version:
-            oldest_date = datetime.strptime(str(self.retrained_version), '%Y%m%d%H%M%S').replace(tzinfo=timezone.utc)
+            oldest_date = datetime.strptime(
+                str(self.retrained_version), '%Y%m%d%H%M%S').replace(tzinfo=timezone.utc)
 
-        brute_force_nearest, brute_force_distance = self.find_closest_face_tag_by_brute_force(source_embedding, oldest_date=oldest_date)
+        brute_force_nearest, brute_force_distance = self.find_closest_face_tag_by_brute_force(
+            source_embedding, oldest_date=oldest_date)
 
         if ann_nearest and ann_distance < brute_force_distance:
             return ann_nearest, ann_distance
@@ -175,10 +184,14 @@ class FaceModel(BaseModel):
             raise ValueError('No Library ID is set')
 
         from django.conf import settings
+
         from photonix.photos.models import PhotoTag
-        ann_path = Path(settings.MODEL_DIR) / 'face' / f'{self.library_id}_faces.ann'
-        tag_ids_path = Path(settings.MODEL_DIR) / 'face' / f'{self.library_id}_faces_tag_ids.json'
-        version_file = Path(settings.MODEL_DIR) / 'face' / f'{self.library_id}_retrained_version.txt'
+        ann_path = Path(settings.MODEL_DIR) / 'face' / \
+            f'{self.library_id}_faces.ann'
+        tag_ids_path = Path(settings.MODEL_DIR) / 'face' / \
+            f'{self.library_id}_faces_tag_ids.json'
+        version_file = Path(settings.MODEL_DIR) / 'face' / \
+            f'{self.library_id}_retrained_version.txt'
 
         embedding_size = 128  # FaceNet output size
         t = AnnoyIndex(embedding_size, 'euclidean')
@@ -203,7 +216,7 @@ class FaceModel(BaseModel):
         t.build(3)  # Number of random forest trees
 
         # Aquire lock to save ANN, tag IDs and version files atomically
-        with Lock(redis_connection, 'face_model_retrain'):
+        with Lock(redis.redis_connection, 'face_model_retrain'):
             # Save ANN index
             t.save(str(ann_path))
 
@@ -218,20 +231,25 @@ class FaceModel(BaseModel):
     def reload_retrained_model_version(self):
         if self.library_id:
             from django.conf import settings
-            version_file = Path(settings.MODEL_DIR) / 'face' / f'{self.library_id}_retrained_version.txt'
+            version_file = Path(settings.MODEL_DIR) / 'face' / \
+                f'{self.library_id}_retrained_version.txt'
             version_date = None
             if os.path.exists(version_file):
                 with open(version_file) as f:
                     contents = f.read().strip()
-                    version_date = datetime.strptime(contents, '%Y%m%d%H%M%S').replace(tzinfo=timezone.utc)
-                    self.retrained_version = int(version_date.strftime('%Y%m%d%H%M%S'))
+                    version_date = datetime.strptime(
+                        contents, '%Y%m%d%H%M%S').replace(tzinfo=timezone.utc)
+                    self.retrained_version = int(
+                        version_date.strftime('%Y%m%d%H%M%S'))
                     return self.retrained_version
         return 0
 
 
 def run_on_photo(photo_id):
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-    from photonix.classifiers.runners import get_photo_by_any_type, results_for_model_on_photo, get_or_create_tag
+    from photonix.classifiers.runners import (get_or_create_tag,
+                                              get_photo_by_any_type,
+                                              results_for_model_on_photo)
 
     photo = get_photo_by_any_type(photo_id)
     model = FaceModel(library_id=photo and photo.library_id)
@@ -257,7 +275,8 @@ def run_on_photo(photo_id):
             # Add it to the results
             result['embedding'] = embedding
             if photo:
-                closest_tag, closest_distance = model.find_closest_face_tag(embedding)
+                closest_tag, closest_distance = model.find_closest_face_tag(
+                    embedding)
                 if closest_tag:
                     print(f'Closest tag: {closest_tag}')
                     print(f'Closest distance: {closest_distance}')
@@ -268,13 +287,15 @@ def run_on_photo(photo_id):
 
     if photo:
         from django.utils import timezone
-        from photonix.photos.models import Tag, PhotoTag
+
+        from photonix.photos.models import PhotoTag, Tag
 
         photo.clear_tags(source='C', type='F')
         for result in results:
             # Use matched tag if within distance threshold
             if result.get('closest_distance', 999) < DISTANCE_THRESHOLD:
-                tag = Tag.objects.get(id=result['closest_tag'], library=photo.library, type='F')
+                tag = Tag.objects.get(
+                    id=result['closest_tag'], library=photo.library, type='F')
                 print(f'MATCHED {tag.name}')
 
             # Otherwise create new tag
@@ -282,23 +303,29 @@ def run_on_photo(photo_id):
                 while True:
                     random_name = f'Unknown person {randint(0, 999999):06d}'
                     try:
-                        Tag.objects.get(library=photo.library, name=random_name, type='F', source='C')
+                        Tag.objects.get(library=photo.library,
+                                        name=random_name, type='F', source='C')
                     except Tag.DoesNotExist:
-                        tag = Tag(library=photo.library, name=random_name, type='F', source='C')
+                        tag = Tag(library=photo.library,
+                                  name=random_name, type='F', source='C')
                         tag.save()
                         break
 
-            x = (result['box'][0] + (result['box'][2] / 2)) / photo.base_file.width
-            y = (result['box'][1] + (result['box'][3] / 2)) / photo.base_file.height
+            x = (result['box'][0] + (result['box'][2] / 2)) / \
+                photo.base_file.width
+            y = (result['box'][1] + (result['box'][3] / 2)) / \
+                photo.base_file.height
             width = result['box'][2] / photo.base_file.width
             height = result['box'][3] / photo.base_file.height
             score = result['confidence']
 
             extra_data = ''
             if 'embedding' in result:
-                extra_data = json.dumps({'facenet_embedding': result['embedding']})
+                extra_data = json.dumps(
+                    {'facenet_embedding': result['embedding']})
 
-            PhotoTag(photo=photo, tag=tag, source='F', confidence=score, significance=score, position_x=x, position_y=y, size_x=width, size_y=height, model_version=model.version, retrained_model_version=model.retrained_version, extra_data=extra_data).save()
+            PhotoTag(photo=photo, tag=tag, source='F', confidence=score, significance=score, position_x=x, position_y=y, size_x=width,
+                     size_y=height, model_version=model.version, retrained_model_version=model.retrained_version, extra_data=extra_data).save()
         photo.classifier_color_completed_at = timezone.now()
         photo.classifier_color_version = getattr(model, 'version', 0)
         photo.save()

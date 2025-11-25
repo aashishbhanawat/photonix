@@ -23,10 +23,10 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-from tensorflow.keras.layers import Input, Dense, Conv2D, MaxPooling2D, PReLU, Flatten, Softmax
-from tensorflow.keras.models import Model
-
 import numpy as np
+from tensorflow.keras.layers import (Conv2D, Dense, Flatten, Input,
+                                     MaxPooling2D, PReLU, Softmax)
+from tensorflow.keras.models import Model
 
 
 class NetworkFactory:
@@ -37,14 +37,18 @@ class NetworkFactory:
 
         p_inp = Input(input_shape)
 
-        p_layer = Conv2D(10, kernel_size=(3, 3), strides=(1, 1), padding="valid")(p_inp)
+        p_layer = Conv2D(10, kernel_size=(
+            3, 3), strides=(1, 1), padding="valid")(p_inp)
         p_layer = PReLU(shared_axes=[1, 2])(p_layer)
-        p_layer = MaxPooling2D(pool_size=(2, 2), strides=(2, 2), padding="same")(p_layer)
+        p_layer = MaxPooling2D(pool_size=(2, 2), strides=(
+            2, 2), padding="same")(p_layer)
 
-        p_layer = Conv2D(16, kernel_size=(3, 3), strides=(1, 1), padding="valid")(p_layer)
+        p_layer = Conv2D(16, kernel_size=(3, 3), strides=(
+            1, 1), padding="valid")(p_layer)
         p_layer = PReLU(shared_axes=[1, 2])(p_layer)
 
-        p_layer = Conv2D(32, kernel_size=(3, 3), strides=(1, 1), padding="valid")(p_layer)
+        p_layer = Conv2D(32, kernel_size=(3, 3), strides=(
+            1, 1), padding="valid")(p_layer)
         p_layer = PReLU(shared_axes=[1, 2])(p_layer)
 
         p_layer_out1 = Conv2D(2, kernel_size=(1, 1), strides=(1, 1))(p_layer)
@@ -62,15 +66,20 @@ class NetworkFactory:
 
         r_inp = Input(input_shape)
 
-        r_layer = Conv2D(28, kernel_size=(3, 3), strides=(1, 1), padding="valid")(r_inp)
+        r_layer = Conv2D(28, kernel_size=(
+            3, 3), strides=(1, 1), padding="valid")(r_inp)
         r_layer = PReLU(shared_axes=[1, 2])(r_layer)
-        r_layer = MaxPooling2D(pool_size=(3, 3), strides=(2, 2), padding="same")(r_layer)
+        r_layer = MaxPooling2D(pool_size=(3, 3), strides=(
+            2, 2), padding="same")(r_layer)
 
-        r_layer = Conv2D(48, kernel_size=(3, 3), strides=(1, 1), padding="valid")(r_layer)
+        r_layer = Conv2D(48, kernel_size=(3, 3), strides=(
+            1, 1), padding="valid")(r_layer)
         r_layer = PReLU(shared_axes=[1, 2])(r_layer)
-        r_layer = MaxPooling2D(pool_size=(3, 3), strides=(2, 2), padding="valid")(r_layer)
+        r_layer = MaxPooling2D(pool_size=(3, 3), strides=(
+            2, 2), padding="valid")(r_layer)
 
-        r_layer = Conv2D(64, kernel_size=(2, 2), strides=(1, 1), padding="valid")(r_layer)
+        r_layer = Conv2D(64, kernel_size=(2, 2), strides=(
+            1, 1), padding="valid")(r_layer)
         r_layer = PReLU(shared_axes=[1, 2])(r_layer)
         r_layer = Flatten()(r_layer)
         r_layer = Dense(128)(r_layer)
@@ -90,19 +99,26 @@ class NetworkFactory:
             input_shape = (48, 48, 3)
 
         o_inp = Input(input_shape)
-        o_layer = Conv2D(32, kernel_size=(3, 3), strides=(1, 1), padding="valid")(o_inp)
+        o_layer = Conv2D(32, kernel_size=(
+            3, 3), strides=(1, 1), padding="valid")(o_inp)
         o_layer = PReLU(shared_axes=[1, 2])(o_layer)
-        o_layer = MaxPooling2D(pool_size=(3, 3), strides=(2, 2), padding="same")(o_layer)
+        o_layer = MaxPooling2D(pool_size=(3, 3), strides=(
+            2, 2), padding="same")(o_layer)
 
-        o_layer = Conv2D(64, kernel_size=(3, 3), strides=(1, 1), padding="valid")(o_layer)
+        o_layer = Conv2D(64, kernel_size=(3, 3), strides=(
+            1, 1), padding="valid")(o_layer)
         o_layer = PReLU(shared_axes=[1, 2])(o_layer)
-        o_layer = MaxPooling2D(pool_size=(3, 3), strides=(2, 2), padding="valid")(o_layer)
+        o_layer = MaxPooling2D(pool_size=(3, 3), strides=(
+            2, 2), padding="valid")(o_layer)
 
-        o_layer = Conv2D(64, kernel_size=(3, 3), strides=(1, 1), padding="valid")(o_layer)
+        o_layer = Conv2D(64, kernel_size=(3, 3), strides=(
+            1, 1), padding="valid")(o_layer)
         o_layer = PReLU(shared_axes=[1, 2])(o_layer)
-        o_layer = MaxPooling2D(pool_size=(2, 2), strides=(2, 2), padding="same")(o_layer)
+        o_layer = MaxPooling2D(pool_size=(2, 2), strides=(
+            2, 2), padding="same")(o_layer)
 
-        o_layer = Conv2D(128, kernel_size=(2, 2), strides=(1, 1), padding="valid")(o_layer)
+        o_layer = Conv2D(128, kernel_size=(2, 2), strides=(
+            1, 1), padding="valid")(o_layer)
         o_layer = PReLU(shared_axes=[1, 2])(o_layer)
 
         o_layer = Flatten()(o_layer)
