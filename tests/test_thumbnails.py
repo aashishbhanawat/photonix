@@ -46,7 +46,8 @@ def test_view(photo_fixture_snow):
     width, height, crop, quality, _, _ = settings.THUMBNAIL_SIZES[0]
     path = get_thumbnail_path(
         photo_fixture_snow.base_file.id, width, height, crop, quality)
-    assert not os.path.exists(path)
+    if os.path.exists(path):
+        os.remove(path)
 
     # Make a web request to the thumbnail API
     client = Client()

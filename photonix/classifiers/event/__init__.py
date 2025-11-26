@@ -1,1 +1,1 @@
-from .model import EventModel, run_on_photo
+from .model import run_on_photo, EventModel

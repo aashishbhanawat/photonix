@@ -26,10 +26,12 @@ class LibraryFactory(factory.django.DjangoModelFactory):
 
     name = factory.Sequence(lambda n: f'Test Library {n}')
     classification_color_enabled = True
+    classification_event_enabled = True
     classification_location_enabled = True
     classification_style_enabled = True
     classification_object_enabled = True
-    classification_face_enabled = True
+    # Disable face classification in tests to avoid downloading weights
+    classification_face_enabled = False
     setup_stage_completed = 'Th'
 
 
