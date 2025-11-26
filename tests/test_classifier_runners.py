@@ -69,12 +69,12 @@ def test_location_via_runner(photo_fixture_tree):
     photo, result = run_on_photo(photo_fixture_tree.id)
     assert photo_fixture_tree.photo_tags.all().count() >= 2
     assert photo_fixture_tree.photo_tags.all()[0].tag.name == 'Greece'
-    assert photo.photo_tags.all()[0].confidence == 1.0
-    assert photo.photo_tags.all()[0].significance == 1.0
-    assert photo.photo_tags.all()[1].tag.name == 'Firá'
-    assert photo.photo_tags.all()[1].confidence == 0.5
-    assert photo.photo_tags.all()[1].significance == 0.5
-    assert photo.photo_tags.all()[1].tag.parent.name == 'Greece'
+    assert photo_fixture_tree.photo_tags.all()[0].confidence == 1.0
+    assert photo_fixture_tree.photo_tags.all()[0].significance == 1.0
+    assert photo_fixture_tree.photo_tags.all()[1].tag.name == 'Firá'
+    assert photo_fixture_tree.photo_tags.all()[1].confidence == 0.5
+    assert photo_fixture_tree.photo_tags.all()[1].significance == 0.5
+    assert photo_fixture_tree.photo_tags.all()[1].tag.parent.name == 'Greece'
 
 
 @pytest.fixture
