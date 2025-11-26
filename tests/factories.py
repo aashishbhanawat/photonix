@@ -30,6 +30,7 @@ class LibraryFactory(factory.django.DjangoModelFactory):
     classification_location_enabled = True
     classification_style_enabled = True
     classification_object_enabled = True
+    # Disable face classification in tests to avoid downloading weights
     classification_face_enabled = False
     setup_stage_completed = 'Th'
 
