@@ -5,9 +5,10 @@ from pathlib import Path
 from celery import shared_task
 from django.conf import settings
 
-from photonix.photos.models import Photo, Task
+from photonix.photos.models import Photo
 from photonix.photos.utils.metadata import get_dimensions
 from photonix.photos.utils.raw import NON_RAW_MIMETYPES, generate_jpeg
+from photonix.photos.utils.thumbnails import generate_thumbnails_for_photo
 from photonix.web.utils import logger
 
 
@@ -50,10 +51,8 @@ def process_raw_task(photo_id):
             photo_file.save()
             logger.info(f'Processed raw file {photo_file.id}')
 
-    # Trigger next step
-    # TODO: Remove this legacy task creation when generate_thumbnails is migrated to Celery (Task 1.3)
-    Task.objects.create(
-        type='generate_thumbnails',
-        subject_id=photo.id,
-        library=photo.library
-    )
+
+@shared_task
+def generate_thumbnails_task(photo_id):
+    logger.info(f'Generating thumbnails for photo {photo_id}')
+    generate_thumbnails_for_photo(photo_id)

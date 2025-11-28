@@ -7,11 +7,13 @@ import time
 from datetime import datetime, timezone
 from decimal import Decimal
 
+from celery import chain
+
 from photonix.photos.models import (Camera, Lens, Library, Photo, PhotoFile,
                                     PhotoTag, Tag, Task)
 from photonix.photos.utils.metadata import (PhotoMetadata, get_mimetype,
                                             parse_datetime, parse_gps_location)
-from photonix.photos.tasks import process_raw_task
+from photonix.photos.tasks import generate_thumbnails_task, process_raw_task
 from photonix.web.utils import logger
 
 MIMETYPE_WHITELIST = [
@@ -208,7 +210,7 @@ def record_photo(path, library, inotify_event_type=None):
     photo_file.save()
 
     # Create task to ensure JPEG version of file exists (used for thumbnailing, analysing etc.)
-    process_raw_task.delay(photo.id)
+    chain(process_raw_task.si(photo.id), generate_thumbnails_task.si(photo.id)).apply_async()
 
     return photo
 

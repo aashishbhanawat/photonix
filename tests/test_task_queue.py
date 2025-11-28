@@ -5,8 +5,6 @@ from django.utils import timezone
 
 from photonix.photos.models import Task
 from photonix.photos.utils.classification import process_classify_images_tasks
-from photonix.photos.utils.thumbnails import process_generate_thumbnails_tasks
-
 from .factories import LibraryFactory
 
 # pytestmark = pytest.mark.django_db
@@ -21,8 +19,11 @@ def photo_fixture_snow(db):
 
 
 def test_tasks_created_updated(photo_fixture_snow):
-    # After record_photo (with eager celery), generate_thumbnails task should be created.
-    task = Task.objects.get(type='generate_thumbnails',
+    # After record_photo (with eager celery), generate_thumbnails task is executed immediately via Celery.
+    # It should create the next task for classification.
+
+    # Check next task has been added to classify images
+    task = Task.objects.get(type='classify_images',
                             subject_id=photo_fixture_snow.id)
     assert task.status == 'P'
     assert (timezone.now() - task.created_at).seconds < 1
@@ -39,23 +40,6 @@ def test_tasks_created_updated(photo_fixture_snow):
     task.status = 'P'
     task.started_at = None
     task.save()
-
-    # Process tasks to generate thumbnails which should add new task for classification
-    process_generate_thumbnails_tasks()
-    task = Task.objects.get(type='generate_thumbnails',
-                            subject_id=photo_fixture_snow.id)
-    assert task.status == 'C'
-    assert (timezone.now() - task.started_at).seconds < 10
-    assert (timezone.now() - task.finished_at).seconds < 1
-
-    # Check next task has been added to classify images
-    task = Task.objects.get(type='classify_images',
-                            subject_id=photo_fixture_snow.id)
-    assert task.status == 'P'
-    assert (timezone.now() - task.created_at).seconds < 1
-    assert (timezone.now() - task.updated_at).seconds < 1
-    assert task.started_at == None
-    assert task.finished_at == None
 
     # Processing the classification task should create child processes
     assert task.complete_with_children == False
