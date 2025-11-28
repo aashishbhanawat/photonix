@@ -7,9 +7,7 @@ from django.utils import timezone
 
 from photonix.photos.models import PhotoFile, Task
 from photonix.photos.utils.fs import download_file
-from photonix.photos.utils.raw import (ensure_raw_processing_tasks,
-                                       generate_jpeg, identified_as_jpeg,
-                                       process_raw_tasks)
+from photonix.photos.utils.raw import (generate_jpeg, identified_as_jpeg)
 from photonix.photos.utils.thumbnails import process_generate_thumbnails_tasks
 
 from .factories import LibraryFactory
@@ -89,40 +87,13 @@ def photo_fixture_raw(db):
 
 
 def test_task_raw_processing(photo_fixture_raw):
-    # Task should have been created for the fixture
-    task = Task.objects.get(type='ensure_raw_processed',
-                            status='P', subject_id=photo_fixture_raw.id)
-    assert (timezone.now() - task.created_at).seconds < 1
-    assert (timezone.now() - task.updated_at).seconds < 1
-    assert task.started_at == None
-    assert task.finished_at == None
-    assert task.status == 'P'
-    assert task.complete_with_children == True
-
-    # Calling this function should create a child task tp generate a JPEG from the raw file
-    ensure_raw_processing_tasks()
-    parent_task = Task.objects.get(
-        type='ensure_raw_processed', subject_id=photo_fixture_raw.id)
-    child_task = Task.objects.get(type='process_raw', parent=parent_task)
-    assert parent_task.status == 'S'
-    assert child_task.status == 'P'
-
-    # PhotoFile should have been created widthout dimensions as metadata for this photo doesn't include it
-    photo_file = PhotoFile.objects.get(id=child_task.subject_id)
-    assert photo_file.width is None
-
-    # Call the processing function
-    process_raw_tasks()
-
-    # Tasks should be now marked as completed
-    parent_task = Task.objects.get(
-        type='ensure_raw_processed', subject_id=photo_fixture_raw.id)
-    child_task = Task.objects.get(type='process_raw', parent=parent_task)
-    assert parent_task.status == 'C'
-    assert child_task.status == 'C'
+    # With Celery eager, the raw processing should have happened immediately.
 
     # PhotoFile object should have been updated to show raw file has been processed
-    photo_file = PhotoFile.objects.get(id=child_task.subject_id)
+    photo_file = photo_fixture_raw.files.all().first()
+    # Reload from DB
+    photo_file = PhotoFile.objects.get(id=photo_file.id)
+
     assert photo_file.raw_processed == True
     assert photo_file.raw_version == 20190305
     assert photo_file.raw_external_params == 'dcraw -w'
@@ -136,7 +107,7 @@ def test_task_raw_processing(photo_fixture_raw):
         1024  # JPEG greater than 1MB in size
     assert photo_file.width == 3684  # Width should now be set
 
-    # Thumbnailing task should have been created as ensure_raw_processed and process_raw have completed
+    # Thumbnailing task should have been created
     assert Task.objects.filter(
         type='generate_thumbnails', subject_id=photo_fixture_raw.id).count() == 1
     task = Task.objects.get(type='generate_thumbnails',
