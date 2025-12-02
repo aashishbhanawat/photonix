@@ -46,6 +46,11 @@ def test_view(photo_fixture_snow):
     width, height, crop, quality, _, _ = settings.THUMBNAIL_SIZES[0]
     path = get_thumbnail_path(
         photo_fixture_snow.base_file.id, width, height, crop, quality)
+
+    # Since we now generate thumbnails eagerly in tests, we need to delete it to test on-demand generation
+    if os.path.exists(path):
+        os.remove(path)
+
     assert not os.path.exists(path)
 
     # Make a web request to the thumbnail API
