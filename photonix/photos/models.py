@@ -33,6 +33,8 @@ class Library(UUIDModel, VersionedModel):
         default=False, help_text='Run object detection on photos?')
     classification_face_enabled = models.BooleanField(
         default=False, help_text='Run face detection on photos?')
+    classification_event_enabled = models.BooleanField(
+        default=False, help_text='Run event detection on photos?')
     setup_stage_completed = models.CharField(max_length=2, choices=LIBRARY_SETUP_STAGE_COMPLETED_CHOICES,
                                              blank=True, null=True, help_text='Where the user got to during onboarding setup')
 
@@ -324,62 +326,3 @@ class PhotoTag(UUIDModel, VersionedModel):
         return '{}: {}'.format(self.photo, self.tag)
 
 
-TASK_STATUS_CHOICES = (
-    ('P', 'Pending'),
-    ('S', 'Started'),
-    ('C', 'Completed'),
-    ('F', 'Failed'),
-)
-
-
-class Task(UUIDModel, VersionedModel):
-    type = models.CharField(max_length=128, db_index=True)
-    subject_id = models.UUIDField(db_index=True)
-    status = models.CharField(
-        max_length=1, choices=TASK_STATUS_CHOICES, default='P', db_index=True)
-    started_at = models.DateTimeField(null=True)
-    finished_at = models.DateTimeField(null=True)
-    parent = models.ForeignKey(
-        'self', related_name='children', null=True, on_delete=models.CASCADE)
-    complete_with_children = models.BooleanField(default=False)
-    library = models.ForeignKey(
-        Library, related_name='task_library', on_delete=models.CASCADE, null=True, blank=True)
-
-    class Meta:
-        ordering = ['created_at']
-
-    def __str__(self):
-        return '{}: {}'.format(self.type, self.created_at)
-
-    def start(self):
-        self.status = 'S'
-        self.started_at = timezone.now()
-        self.save()
-
-    def complete(self, next_type=None, next_subject_id=None):
-        # Set status of current task and queue up next task if appropriate
-        self.status = 'C'
-        self.finished_at = timezone.now()
-        self.save()
-
-        # Create next task in the chain if there should be one
-        if not self.parent and next_type:
-            Task(type=next_type, subject_id=next_subject_id,
-                 library=self.library).save()
-
-        if self.parent and self.parent.complete_with_children:
-            # If all siblings are complete, we should mark our parent as complete
-            with transaction.atomic():
-                # select_for_update() will block if another process is working with these children
-                siblings = self.parent.children.select_for_update().filter(status='C')
-                if siblings.count() == self.parent.children.count():
-                    self.parent.complete(
-                        next_type=next_type, next_subject_id=next_subject_id)
-
-    def failed(self, error=None, traceback=None):
-        self.status = 'F'
-        self.finished_at = timezone.now()
-        self.save()
-
-        if error:
-            logger.error(error)

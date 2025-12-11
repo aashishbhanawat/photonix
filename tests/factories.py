@@ -5,7 +5,7 @@ from django.utils import timezone
 
 from photonix.accounts.models import User
 from photonix.photos.models import (Library, LibraryUser, Photo, PhotoFile,
-                                    PhotoTag, Tag, Task)
+                                    PhotoTag, Tag)
 
 
 class UserFactory(factory.django.DjangoModelFactory):
@@ -25,11 +25,11 @@ class LibraryFactory(factory.django.DjangoModelFactory):
         model = Library
 
     name = factory.Sequence(lambda n: f'Test Library {n}')
-    classification_color_enabled = True
-    classification_location_enabled = True
-    classification_style_enabled = True
-    classification_object_enabled = True
-    classification_face_enabled = True
+    classification_color_enabled = False
+    classification_location_enabled = False
+    classification_style_enabled = False
+    classification_object_enabled = False
+    classification_face_enabled = False
     setup_stage_completed = 'Th'
 
 
@@ -85,12 +85,3 @@ class PhotoTagFactory(factory.django.DjangoModelFactory):
 
     photo = factory.SubFactory(PhotoFactory)
     tag = factory.SubFactory(TagFactory)
-
-
-class TaskFactory(factory.django.DjangoModelFactory):
-    class Meta:
-        model = Task
-
-    type = 'classify.style'
-    status = 'P'
-    library = factory.SubFactory(LibraryFactory)
