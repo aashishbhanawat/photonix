@@ -220,6 +220,13 @@ class TestGraphQL(unittest.TestCase):
 
     def test_library_setting_data(self):
         """Test library setting data."""
+        self._library.classification_color_enabled = True
+        self._library.classification_style_enabled = True
+        self._library.classification_object_enabled = True
+        self._library.classification_location_enabled = True
+        self._library.classification_face_enabled = True
+        self._library.save()
+
         query = """
             query LibrarySetting($libraryId: UUID) {
                 librarySetting(libraryId: $libraryId) {
@@ -965,6 +972,7 @@ class TestGraphQLOnboarding(unittest.TestCase):
                 $classificationObjectEnabled: Boolean!,
                 $classificationLocationEnabled: Boolean!,
                 $classificationFaceEnabled: Boolean!,
+                $classificationEventEnabled: Boolean!,
                 $userId: ID!,$libraryId: ID!,
                 ) {
                     imageAnalysis(input:{
@@ -973,6 +981,7 @@ class TestGraphQLOnboarding(unittest.TestCase):
                         classificationObjectEnabled:$classificationObjectEnabled,
                         classificationLocationEnabled:$classificationLocationEnabled,
                         classificationFaceEnabled:$classificationFaceEnabled,
+                        classificationEventEnabled:$classificationEventEnabled,
                         userId:$userId,
                         libraryId:$libraryId,
                     }) {
@@ -989,6 +998,7 @@ class TestGraphQLOnboarding(unittest.TestCase):
                 'classificationObjectEnabled': False,
                 'classificationLocationEnabled': False,
                 'classificationFaceEnabled': False,
+                'classificationEventEnabled': False,
                 'userId': data['data']['PhotoImporting']['userId'],
                 'libraryId': data['data']['PhotoImporting']['libraryId'],
             })

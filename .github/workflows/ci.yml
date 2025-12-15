@@ -33,8 +33,6 @@ jobs:
         pip install -r requirements.txt
         # Re-install fakeredis with lua support explicitly if needed or ensure it's in requirements
         # (It is in requirements.txt now)
-        # Install djangorestframework if missed (it is not in requirements.txt but needed for tests)
-        pip install djangorestframework
 
     - name: Lint with flake8
       run: |

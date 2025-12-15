@@ -16,9 +16,10 @@ from photonix.photos.utils.filter_photos import (filter_photos_queryset,
                                                  sort_photos_exposure)
 from photonix.photos.utils.metadata import PhotoMetadata
 from photonix.photos.utils.tasks import count_remaining_task
+from photonix.photos.tasks import generate_thumbnails_task
 
 from .models import (Camera, Lens, Library, LibraryPath, LibraryUser, Photo,
-                     PhotoFile, PhotoTag, Tag, Task)
+                     PhotoFile, PhotoTag, Tag)
 
 User = get_user_model()
 
@@ -572,6 +573,7 @@ class LibraryInput(graphene.InputObjectType):
     classification_style_enabled = graphene.Boolean()
     classification_object_enabled = graphene.Boolean()
     classification_face_enabled = graphene.Boolean()
+    classification_event_enabled = graphene.Boolean()
     source_folder = graphene.String(required=False)
     user_id = graphene.ID()
     library_id = graphene.ID()
@@ -737,6 +739,38 @@ class UpdateLibraryFaceEnabled(graphene.Mutation):
             return UpdateLibraryFaceEnabled(ok=ok, classification_face_enabled=None)
 
 
+class UpdateLibraryEventEnabled(graphene.Mutation):
+    """To update data in database that will be passed from frontend EventEnabled api."""
+
+    class Arguments:
+        """To set arguments in for mute method."""
+
+        input = LibraryInput(required=False)
+
+    ok = graphene.Boolean()
+    classification_event_enabled = graphene.Boolean()
+
+    @staticmethod
+    def mutate(root, info, input=None):
+        """Method to save the updated data for EventEnabled api."""
+        ok = False
+        user = info.context.user
+        libraries = Library.objects.filter(
+            users__user=user, users__owner=True, id=input.library_id)
+        if libraries and str(input.get('classification_event_enabled')) != 'None':
+            library_obj = libraries[0]
+            library_obj.classification_event_enabled = input.classification_event_enabled
+            library_obj.save()
+            ok = True
+            return UpdateLibraryEventEnabled(
+                ok=ok,
+                classification_event_enabled=library_obj.classification_event_enabled)
+        if not libraries:
+            raise Exception('User is not the owner of library!')
+        else:
+            return UpdateLibraryEventEnabled(ok=ok, classification_event_enabled=None)
+
+
 class UpdateLibrarySourceFolder(graphene.Mutation):
     """To update data in database that will be passed from frontend SourceFolder api."""
 
@@ -884,6 +918,7 @@ class ImageAnalysis(graphene.Mutation):
         library_obj.classification_style_enabled = input.classification_style_enabled
         library_obj.classification_object_enabled = input.classification_object_enabled
         library_obj.classification_face_enabled = input.classification_face_enabled
+        library_obj.classification_event_enabled = input.classification_event_enabled
         library_obj.save()
         user = User.objects.get(pk=input.user_id)
         user.has_configured_image_analysis = True
@@ -994,8 +1029,7 @@ class ChangePreferredPhotoFile(graphene.Mutation):
         photo_obj.preferred_photo_file = PhotoFile.objects.get(
             id=selected_photo_file_id)
         photo_obj.save()
-        Task(type='generate_thumbnails', subject_id=photo_obj.id,
-             library=photo_obj.library).save()
+        generate_thumbnails_task.delay(photo_obj.id)
         return ChangePreferredPhotoFile(ok=True)
 
 
@@ -1166,9 +1200,7 @@ class SavePhotoFileRotation(graphene.Mutation):
             photofile_obj = PhotoFile.objects.get(id=photo_file_id)
             photofile_obj.rotation = rotation
             photofile_obj.save()
-            Task(
-                type='generate_thumbnails', subject_id=photofile_obj.photo.id,
-                library=photofile_obj.photo.library).save()
+            generate_thumbnails_task.delay(photofile_obj.photo.id)
             return SavePhotoFileRotation(ok=True, rotation=rotation)
         return SavePhotoFileRotation(ok=False, rotation=rotation)
 
@@ -1179,6 +1211,7 @@ class Mutation(graphene.ObjectType):
     update_style_enabled = UpdateLibraryStyleEnabled.Field()
     update_object_enabled = UpdateLibraryObjectEnabled.Field()
     update_face_enabled = UpdateLibraryFaceEnabled.Field()
+    update_event_enabled = UpdateLibraryEventEnabled.Field()
     update_source_folder = UpdateLibrarySourceFolder.Field()
     create_library = CreateLibrary.Field()
     Photo_importing = PhotoImporting.Field()

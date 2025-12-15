@@ -10,7 +10,7 @@ from decimal import Decimal
 from celery import chain
 
 from photonix.photos.models import (Camera, Lens, Library, Photo, PhotoFile,
-                                    PhotoTag, Tag, Task)
+                                    PhotoTag, Tag)
 from photonix.photos.utils.metadata import (PhotoMetadata, get_mimetype,
                                             parse_datetime, parse_gps_location)
 from photonix.photos.tasks import generate_thumbnails_task, process_raw_task

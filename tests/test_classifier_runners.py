@@ -37,6 +37,7 @@ def test_color_via_runner(photo_fixture_snow):
     assert '{0:.3f}'.format(result[0][1]) == '0.163'
 
     # Passing in a Photo object should tag the object
+    photo_fixture_snow.photo_tags.all().delete()
     assert photo_fixture_snow.photo_tags.count() == 0
     photo, result = run_on_photo(photo_fixture_snow.id)
     assert photo_fixture_snow.photo_tags.count() == 13
@@ -67,6 +68,7 @@ def test_location_via_runner(photo_fixture_tree):
     assert result['city']['country_name'] == 'Greece'
 
     # Photo object with location to tag should have tags for country and city
+    photo_fixture_tree.photo_tags.all().delete()
     assert photo_fixture_tree.photo_tags.count() == 0
     photo, result = run_on_photo(photo_fixture_tree.id)
     assert photo.photo_tags.all().count() == 2
@@ -95,6 +97,7 @@ def test_object_via_runner(mock_predict, photo_fixture_snow):
     assert '{0:.3f}'.format(result[0]['significance']) == '0.134'
 
     # Passing in a Photo object should tag the object
+    photo_fixture_snow.photo_tags.all().delete()
     assert photo_fixture_snow.photo_tags.count() == 0
     photo, result = run_on_photo(photo_fixture_snow.id)
     assert photo_fixture_snow.photo_tags.count() == 3
@@ -121,6 +124,7 @@ def test_style_via_runner(mock_predict, photo_fixture_snow):
     assert '{0:.3f}'.format(result[0][1]) == '0.962'
 
     # Passing in a Photo object should tag the object
+    photo_fixture_snow.photo_tags.all().delete()
     assert photo_fixture_snow.photo_tags.count() == 0
     photo, result = run_on_photo(photo_fixture_snow.id)
     assert photo_fixture_snow.photo_tags.count() == 1

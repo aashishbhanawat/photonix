@@ -8,26 +8,19 @@ import numpy as np
 from django.conf import settings
 from PIL import Image, ImageFile, ImageOps
 
-from photonix.photos.models import Photo, PhotoFile, Task
+from photonix.photos.models import Photo, PhotoFile
 from photonix.photos.utils.metadata import PhotoMetadata
 from photonix.web.utils import logger
 
 THUMBNAILER_VERSION = 20210321
 
 
-def generate_thumbnails_for_photo(photo, task=None):
-    if task:
-        task.start()
-
+def generate_thumbnails_for_photo(photo):
     if not isinstance(photo, Photo):
         try:
             photo = Photo.objects.get(id=photo)
         except Photo.DoesNotExist:
-            msg = f'Photo instance does not exist with id={photo}'
-            if task:
-                task.failed(msg)
-            else:
-                logger.error(msg)
+            logger.error(f'Photo instance does not exist with id={photo}')
             return
 
     for thumbnail in settings.THUMBNAIL_SIZES:
@@ -36,26 +29,12 @@ def generate_thumbnails_for_photo(photo, task=None):
                 get_thumbnail(photo=photo, width=thumbnail[0], height=thumbnail[1], crop=thumbnail[2],
                               quality=thumbnail[3], force_regenerate=True, force_accurate=thumbnail[5])
             except (FileNotFoundError, IndexError):
-                if task:
-                    task.failed()
-                else:
-                    logger.error(f'Failed to generate thumbnail for photo {photo.id}')
+                logger.error(f'Failed to generate thumbnail for photo {photo.id}')
                 return
 
     if photo.thumbnailed_version < THUMBNAILER_VERSION:
         photo.thumbnailed_version = THUMBNAILER_VERSION
         photo.save()
-
-    # Complete task for photo and add next task for classifying images if this hasn't happened previously
-    if task:
-        if Task.objects.filter(type='classify_images', subject_id=photo.id).count() > 0:
-            task.complete()
-        else:
-            task.complete(next_type='classify_images', next_subject_id=photo.id)
-    else:
-        # Check if classify task exists, if not create it
-        if Task.objects.filter(type='classify_images', subject_id=photo.id).count() == 0:
-            Task(type='classify_images', subject_id=photo.id, library=photo.library).save()
 
 
 def get_thumbnail_path(photo_file_id, width=256, height=256, crop='cover', quality=75):

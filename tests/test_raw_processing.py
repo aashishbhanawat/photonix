@@ -5,7 +5,7 @@ import pytest
 from django.conf import settings
 from django.utils import timezone
 
-from photonix.photos.models import PhotoFile, Task
+from photonix.photos.models import PhotoFile
 from photonix.photos.utils.fs import download_file
 from photonix.photos.utils.raw import (generate_jpeg, identified_as_jpeg)
 
@@ -106,19 +106,12 @@ def test_task_raw_processing(photo_fixture_raw):
         1024  # JPEG greater than 1MB in size
     assert photo_file.width == 3684  # Width should now be set
 
-    # Thumbnailing task should not have been created (legacy)
-    assert Task.objects.filter(
-        type='generate_thumbnails', subject_id=photo_fixture_raw.id).count() == 0
-
     # Make sure thumbnails got generated immediately
     for thumbnail in settings.THUMBNAIL_SIZES:
         if thumbnail[4]:
             path = photo_fixture_raw.thumbnail_path(thumbnail)
             assert os.path.exists(path)
 
-    # Classification task should have been created
-    assert Task.objects.filter(
-        type='classify_images', subject_id=photo_fixture_raw.id).count() == 1
     thumbnail_path = photo_fixture_raw.thumbnail_path((256, 256, 'cover', 50))
     assert os.stat(thumbnail_path).st_size > 9463 * 0.8
     assert os.stat(thumbnail_path).st_size < 9463 * 1.2
