@@ -1,7 +1,7 @@
 import React from 'react'
 import { useForm } from 'react-hook-form'
 import { useStateMachine } from 'little-state-machine'
-import { Stack } from '@chakra-ui/core'
+import { Stack } from '@chakra-ui/react'
 
 import updateAction from './updateAction'
 import Modal from './../Modal'

@@ -4,7 +4,7 @@ import {
   Input,
   InputRightElement,
   InputGroup,
-} from '@chakra-ui/core'
+} from '@chakra-ui/react'
 
 const PasswordInput = ({ name, register, registerOptions, ...rest }) => {
   const [show, setShow] = useState(false)

@@ -11,7 +11,7 @@ import {
   // Input,
   // InputGroup,
   // IconButton,
-} from '@chakra-ui/core'
+} from '@chakra-ui/react'
 
 import Modal from './Modal'
 import {

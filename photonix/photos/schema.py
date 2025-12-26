@@ -27,16 +27,19 @@ User = get_user_model()
 class LibraryType(DjangoObjectType):
     class Meta:
         model = Library
+        fields = '__all__'
 
 
 class CameraType(DjangoObjectType):
     class Meta:
         model = Camera
+        fields = '__all__'
 
 
 class LensType(DjangoObjectType):
     class Meta:
         model = Lens
+        fields = '__all__'
 
 
 class PhotoTagType(DjangoObjectType):
@@ -44,6 +47,7 @@ class PhotoTagType(DjangoObjectType):
 
     class Meta:
         model = PhotoTag
+        fields = '__all__'
 
     def resolve_show_verify_icon(self, info):
         if self.tag.type == 'F' and not self.verified and self.tag.photo_tags.filter(verified=True).exists():
@@ -54,6 +58,7 @@ class PhotoTagType(DjangoObjectType):
 class PhotoFileType(DjangoObjectType):
     class Meta:
         model = PhotoFile
+        fields = '__all__'
 
 
 class CustomNode(graphene.Node):
@@ -92,6 +97,7 @@ class PhotoNode(DjangoObjectType):
 
     class Meta:
         model = Photo
+        fields = '__all__'
         interfaces = (CustomNode, PhotoInterface)
 
     def resolve_location(self, info):
@@ -182,31 +188,37 @@ class PhotoFilter(django_filters.FilterSet):
 class LocationTagType(DjangoObjectType):
     class Meta:
         model = Tag
+        fields = '__all__'
 
 
 class ObjectTagType(DjangoObjectType):
     class Meta:
         model = Tag
+        fields = '__all__'
 
 
 class PersonTagType(DjangoObjectType):
     class Meta:
         model = Tag
+        fields = '__all__'
 
 
 class ColorTagType(DjangoObjectType):
     class Meta:
         model = Tag
+        fields = '__all__'
 
 
 class StyleTagType(DjangoObjectType):
     class Meta:
         model = Tag
+        fields = '__all__'
 
 
 class EventTagType(DjangoObjectType):
     class Meta:
         model = Tag
+        fields = '__all__'
 
 
 class LibrarySetting(graphene.ObjectType):
@@ -229,6 +241,7 @@ class TagNode(DjangoObjectType):
 
     class Meta:
         model = Tag
+        fields = '__all__'
         filter_fields = {
             'name': ['exact', 'icontains', 'istartswith'],
         }

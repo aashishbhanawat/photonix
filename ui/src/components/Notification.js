@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import styled from '@emotion/styled'
-import { Progress, Box, Flex } from '@chakra-ui/core'
+import { Progress, Box, Flex } from '@chakra-ui/react'
 import { useQuery, useMutation } from '@apollo/client'
 import { useSelector } from 'react-redux'
 

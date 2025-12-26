@@ -1,5 +1,5 @@
 import React from 'react'
-import { ErrorMessage } from 'react-hook-form'
+import { ErrorMessage } from '@hookform/error-message'
 import {
   Switch,
   Flex,
@@ -9,7 +9,7 @@ import {
   FormErrorMessage,
   FormLabel,
   Select,
-} from '@chakra-ui/core'
+} from '@chakra-ui/react'
 
 import PasswordInput from './fields/PasswordInput'
 
