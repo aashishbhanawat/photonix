@@ -16,6 +16,7 @@ User = get_user_model()
 class UserType(DjangoObjectType):
     class Meta:
         model = User
+        fields = '__all__'
 
 
 class CreateUser(graphene.Mutation):

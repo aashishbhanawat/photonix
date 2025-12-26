@@ -1,15 +1,16 @@
 import React from 'react'
-import ReactDOM from 'react-dom'
+import { createRoot } from 'react-dom/client'
 import AppContainer from './containers/AppContainer'
 import * as serviceWorker from './serviceWorker'
 import Init from './components/Init'
 
-ReactDOM.render(
+const container = document.getElementById('root');
+const root = createRoot(container);
+root.render(
   <Init>
     <AppContainer />
-  </Init>,
-  document.getElementById('root')
-)
+  </Init>
+);
 
 // If you want your app to work offline and load faster, you can change
 // unregister() to register() below. Note this comes with some pitfalls.

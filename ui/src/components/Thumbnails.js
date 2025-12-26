@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import PropTypes from 'prop-types'
 import { useMutation } from '@apollo/client'
-import { useLongPress, LongPressDetectEvents } from 'use-long-press'
+import { useLongPress, LongPressEventType } from 'use-long-press'
 import styled from '@emotion/styled'
 import { useHistory } from 'react-router-dom'
 
@@ -183,7 +183,7 @@ const Thumbnails = ({
       threshold: 500,
       captureEvent: true,
       cancelOnMovement: false,
-      detect: LongPressDetectEvents.BOTH,
+      detect: LongPressEventType.Pointer,
     }
   )
 

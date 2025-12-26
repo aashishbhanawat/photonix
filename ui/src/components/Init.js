@@ -12,8 +12,7 @@ import {
 import { RetryLink } from '@apollo/client/link/retry'
 import { Router } from 'react-router-dom'
 import { ModalContainer } from 'react-router-modal'
-// import { ThemeProvider, CSSReset } from '@chakra-ui/core'
-import { ThemeProvider, ColorModeProvider } from '@chakra-ui/core'
+import { ChakraProvider } from '@chakra-ui/react'
 
 import history from '../history'
 import reducers from './../stores'
@@ -73,15 +72,12 @@ const Init = ({ children }) => {
       <React.StrictMode>
         <ApolloProvider client={client}>
           <Router history={history}>
-            <ThemeProvider theme={customTheme}>
-              <ColorModeProvider value="dark">
-                <div className={isMobileApp ? 'isMobileApp' : undefined}>
-                  {/* <CSSReset /> */}
-                  {children}
-                  <ModalContainer />
-                </div>
-              </ColorModeProvider>
-            </ThemeProvider>
+            <ChakraProvider theme={customTheme}>
+              <div className={isMobileApp ? 'isMobileApp' : undefined}>
+                {children}
+                <ModalContainer />
+              </div>
+            </ChakraProvider>
           </Router>
         </ApolloProvider>
       </React.StrictMode>
