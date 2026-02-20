@@ -2,13 +2,12 @@ import os
 
 import graphene
 import graphql_jwt
+from django.apps import apps
 from django.contrib.auth import (authenticate, get_user_model,
                                  update_session_auth_hash)
 from graphene_django.types import DjangoObjectType
 from graphql import GraphQLError
 from graphql_jwt.shortcuts import create_refresh_token, get_token
-
-from photonix.photos.models import Library, LibraryPath, LibraryUser
 
 User = get_user_model()
 
@@ -84,6 +83,8 @@ class Query(graphene.ObjectType):
             'DEMO', False) or os.environ.get('SAMPLE_DATA', False)
 
         if user and user.is_authenticated:
+            Library = apps.get_model('photos', 'Library')
+            LibraryPath = apps.get_model('photos', 'LibraryPath')
             library = Library.objects.filter(users__user=user).first()
             library_path = LibraryPath.objects.filter(library=library).first() if library else None
 

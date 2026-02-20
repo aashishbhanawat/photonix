@@ -78,7 +78,7 @@ class TestGraphQL(unittest.TestCase):
     def test_user_login_environment(self):
         """Test user logged in successfully or not."""
         environment_query = """
-            query{
+            query {
                 environment {
                   demo
                   firstRun
@@ -876,7 +876,7 @@ class TestGraphQLOnboarding(unittest.TestCase):
     def test_onboarding_steps(self):
         """Check all the steps of onboarding(user sign up) process."""
         environment_query = """
-            query{
+            query {
                 environment {
                   demo
                   firstRun
