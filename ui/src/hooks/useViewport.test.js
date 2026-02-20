@@ -1,29 +1,49 @@
+import React from 'react'
 import { renderHook, act } from '@testing-library/react'
 import useViewport from './useViewport'
 
 describe('useViewport', () => {
-  const originalInnerWidth = window.innerWidth
-  const originalInnerHeight = window.innerHeight
+  let originalInnerWidth
+  let originalInnerHeight
 
   beforeAll(() => {
+    originalInnerWidth = window.innerWidth
+    originalInnerHeight = window.innerHeight
+
     // Mock window.innerWidth and window.innerHeight
-    Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: 1024 })
-    Object.defineProperty(window, 'innerHeight', { writable: true, configurable: true, value: 768 })
+    Object.defineProperty(window, 'innerWidth', {
+      writable: true,
+      configurable: true,
+      value: 1024,
+    })
+    Object.defineProperty(window, 'innerHeight', {
+      writable: true,
+      configurable: true,
+      value: 768,
+    })
   })
 
   afterAll(() => {
-    Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: originalInnerWidth })
-    Object.defineProperty(window, 'innerHeight', { writable: true, configurable: true, value: originalInnerHeight })
+    Object.defineProperty(window, 'innerWidth', {
+      writable: true,
+      configurable: true,
+      value: originalInnerWidth,
+    })
+    Object.defineProperty(window, 'innerHeight', {
+      writable: true,
+      configurable: true,
+      value: originalInnerHeight,
+    })
   })
 
-  it('should return initial window dimensions', () => {
+  test('should return initial window dimensions', () => {
     const { result } = renderHook(() => useViewport())
 
     expect(result.current.width).toBe(1024)
     expect(result.current.height).toBe(768)
   })
 
-  it('should update dimensions on window resize', () => {
+  test('should update dimensions on window resize', () => {
     const { result } = renderHook(() => useViewport())
 
     act(() => {
@@ -36,13 +56,16 @@ describe('useViewport', () => {
     expect(result.current.height).toBe(600)
   })
 
-  it('should remove event listener on unmount', () => {
+  test('should remove event listener on unmount', () => {
     const removeEventListenerSpy = jest.spyOn(window, 'removeEventListener')
     const { unmount } = renderHook(() => useViewport())
 
     unmount()
 
-    expect(removeEventListenerSpy).toHaveBeenCalledWith('resize', expect.any(Function))
+    expect(removeEventListenerSpy).toHaveBeenCalledWith(
+      'resize',
+      expect.any(Function)
+    )
     removeEventListenerSpy.mockRestore()
   })
 })
