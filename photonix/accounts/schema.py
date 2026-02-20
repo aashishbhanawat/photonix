@@ -75,49 +75,59 @@ class Query(graphene.ObjectType):
         return user
 
     def resolve_environment(self, info):
-        user = User.objects.first()
+        user = info.context.user
+        if user.is_anonymous:
+            user = User.objects.first()
+
         demo = os.environ.get('DEMO', False)
         sample_data = os.environ.get(
             'DEMO', False) or os.environ.get('SAMPLE_DATA', False)
 
-        if user and user.has_set_personal_info and \
-            user.has_created_library and user.has_configured_importing and \
-                user.has_configured_image_analysis:
+        if user and user.is_authenticated:
+            library = Library.objects.filter(users__user=user).first()
+            library_path = LibraryPath.objects.filter(library=library).first() if library else None
+
+            if user.has_set_personal_info and \
+                user.has_created_library and user.has_configured_importing and \
+                    user.has_configured_image_analysis:
+                return {
+                    'demo': demo,
+                    'sample_data': sample_data,
+                    'first_run': False,
+                    'user_id': user.id,
+                    'library_id': library.id if library else None,
+                    'library_path_id': library_path.id if library_path else None,
+                }
+            else:
+                if not user.has_created_library:
+                    return {
+                        'demo': demo,
+                        'sample_data': sample_data,
+                        'first_run': True,
+                        'form': 'has_created_library', 'user_id': user.id}
+                if not user.has_configured_importing:
+                    return {
+                        'demo': demo,
+                        'sample_data': sample_data,
+                        'first_run': True,
+                        'form': 'has_configured_importing', 'user_id': user.id,
+                        'library_id': library.id if library else None,
+                        'library_path_id': library_path.id if library_path else None,
+                    }
+                if not user.has_configured_image_analysis:
+                    return {
+                        'demo': demo,
+                        'sample_data': sample_data,
+                        'first_run': True,
+                        'form': 'has_configured_image_analysis', 'user_id': user.id,
+                        'library_id': library.id if library else None,
+                    }
+        else:
             return {
                 'demo': demo,
                 'sample_data': sample_data,
-                'first_run': False,
-            }
-        else:
-            if not user or not user.is_authenticated:
-                return {
-                    'demo': demo,
-                    'sample_data': sample_data,
-                    'first_run': True,
-                    'form': 'has_set_personal_info'}
-            if not user.has_created_library:
-                return {
-                    'demo': demo,
-                    'sample_data': sample_data,
-                    'first_run': True,
-                    'form': 'has_created_library', 'user_id': user.id}
-            if not user.has_configured_importing:
-                return {
-                    'demo': demo,
-                    'sample_data': sample_data,
-                    'first_run': True,
-                    'form': 'has_configured_importing', 'user_id': user.id,
-                    'library_id': Library.objects.filter(users__user=user)[0].id,
-                    'library_path_id': LibraryPath.objects.filter(library__users__user=user)[0].id
-                }
-            if not user.has_configured_image_analysis:
-                return {
-                    'demo': demo,
-                    'sample_data': sample_data,
-                    'first_run': True,
-                    'form': 'has_configured_image_analysis', 'user_id': user.id,
-                    'library_id': Library.objects.filter(users__user=user)[0].id,
-                }
+                'first_run': True,
+                'form': 'has_set_personal_info'}
 
     def resolve_after_signup(self, info):
         '''To login user from frontend after finish sigunp process.'''
