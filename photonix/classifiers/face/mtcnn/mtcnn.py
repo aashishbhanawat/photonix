@@ -31,7 +31,6 @@
 
 # import cv2
 import numpy as np
-import pkg_resources
 from PIL import Image
 
 from .exceptions import InvalidImage
