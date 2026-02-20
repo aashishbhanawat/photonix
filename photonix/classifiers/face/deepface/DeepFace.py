@@ -1,20 +1,23 @@
-from photonix.classifiers.face.deepface.commons import functions
-from photonix.classifiers.face.deepface.commons import distance as dst
-from photonix.classifiers.face.deepface.basemodels import Facenet
-import tensorflow as tf
 import os
 import warnings
+
+import tensorflow as tf
+
+from photonix.classifiers.face.deepface.basemodels import Facenet
+from photonix.classifiers.face.deepface.commons import distance as dst
+from photonix.classifiers.face.deepface.commons import functions
 
 warnings.filterwarnings("ignore")
 
 
 # os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 
 
 tf_version = int(tf.__version__.split(".")[0])
 if tf_version == 2:
     import logging
+
     tf.get_logger().setLevel(logging.ERROR)
 
 
@@ -31,20 +34,25 @@ def build_model(model_name):
     """
 
     models = {
-        'Facenet': Facenet.loadModel,
+        "Facenet": Facenet.loadModel,
     }
 
     model = models.get(model_name)
 
     if model:
         model = model()
-        # print('Using {} model backend'.format(model_name))
         return model
     else:
-        raise ValueError('Invalid model_name passed - {}'.format(model_name))
+        raise ValueError("Invalid model_name passed - {}".format(model_name))
 
 
-def represent(img_path, model_name='VGG-Face', model=None, enforce_detection=True, detector_backend='mtcnn'):
+def represent(
+    img_path,
+    model_name="VGG-Face",
+    model=None,
+    enforce_detection=True,
+    detector_backend="mtcnn",
+):
     """
     This function represents facial images as vectors.
 
@@ -71,12 +79,15 @@ def represent(img_path, model_name='VGG-Face', model=None, enforce_detection=Tru
     # ---------------------------------
 
     # decide input shape
-    input_shape = input_shape_x, input_shape_y = functions.find_input_shape(
-        model)
+    input_shape = input_shape_x, input_shape_y = functions.find_input_shape(model)
 
     # detect and align
-    img = functions.preprocess_face(img=img_path, target_size=(
-        input_shape_y, input_shape_x), enforce_detection=enforce_detection, detector_backend=detector_backend)
+    img = functions.preprocess_face(
+        img=img_path,
+        target_size=(input_shape_y, input_shape_x),
+        enforce_detection=enforce_detection,
+        detector_backend=detector_backend,
+    )
 
     # represent
     embedding = model.predict(img)[0].tolist()
@@ -84,7 +95,7 @@ def represent(img_path, model_name='VGG-Face', model=None, enforce_detection=Tru
     return embedding
 
 
-def detectFace(img_path, detector_backend='mtcnn'):
+def detectFace(img_path, detector_backend="mtcnn"):
     """
     This function applies pre-processing stages of a face recognition pipeline including detection and alignment
 
@@ -100,5 +111,6 @@ def detectFace(img_path, detector_backend='mtcnn'):
     functions.initialize_detector(detector_backend=detector_backend)
 
     img = functions.preprocess_face(img=img_path, detector_backend=detector_backend)[
-        0]  # preprocess_face returns (1, 224, 224, 3)
+        0
+    ]  # preprocess_face returns (1, 224, 224, 3)
     return img[:, :, ::-1]  # bgr to rgb
