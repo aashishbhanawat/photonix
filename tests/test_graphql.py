@@ -78,7 +78,7 @@ class TestGraphQL(unittest.TestCase):
     def test_user_login_environment(self):
         """Test user logged in successfully or not."""
         environment_query = """
-            query{
+            query {
                 environment {
                   demo
                   firstRun
@@ -93,7 +93,10 @@ class TestGraphQL(unittest.TestCase):
         assert response.status_code == 200
         data = get_graphql_content(response)
         self.assertFalse(data['data']['environment']['firstRun'])
-        # TODO: Test to make sure the user is actually logged in here - userId etc. should be set
+        self.assertEqual(data['data']['environment']['userId'], str(self.defaults['user'].id))
+        self.assertEqual(data['data']['environment']['libraryId'], str(self.defaults['library'].id))
+        library_path = LibraryPath.objects.get(library=self.defaults['library'])
+        self.assertEqual(data['data']['environment']['libraryPathId'], str(library_path.id))
 
     def test_get_photo(self):
         # self.api_client.set_user(self.defaults['user'])
@@ -873,7 +876,7 @@ class TestGraphQLOnboarding(unittest.TestCase):
     def test_onboarding_steps(self):
         """Check all the steps of onboarding(user sign up) process."""
         environment_query = """
-            query{
+            query {
                 environment {
                   demo
                   firstRun
