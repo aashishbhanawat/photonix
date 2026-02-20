@@ -134,7 +134,7 @@ class FaceModel(BaseModel):
             # Collect all previously generated embeddings
             from photonix.photos.models import PhotoTag
             photo_tags = PhotoTag.objects.filter(
-                photo__library_id=self.library_id, tag__type='F')
+                photo__library_id=self.library_id, tag__type='F').select_related('tag')
             if oldest_date:
                 photo_tags = photo_tags.filter(created_at__gt=oldest_date)
             for photo_tag in photo_tags:
@@ -203,7 +203,7 @@ class FaceModel(BaseModel):
                 t.add_item(len(tag_ids), embedding)
                 tag_ids.append(id)
         else:
-            for photo_tag in PhotoTag.objects.filter(tag__type='F').order_by('id'):
+            for photo_tag in PhotoTag.objects.filter(tag__type='F').select_related('tag').order_by('id'):
                 try:
                     extra_data = json.loads(photo_tag.extra_data)
                     embedding = extra_data['facenet_embedding']
