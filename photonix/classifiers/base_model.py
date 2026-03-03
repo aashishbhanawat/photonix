@@ -104,7 +104,7 @@ class BaseModel:
                         error = True
                         logger.error(f"File downloaded from {location} is "
                                      "corrupt as indicated by bad hash")
-                        # TODO: Delete badly downloaded file
+                        os.remove(f.name)
 
             # Write version file
             with open(version_file, 'w') as f:
