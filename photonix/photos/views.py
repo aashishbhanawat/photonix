@@ -1,12 +1,12 @@
-from photonix.photos.models import PhotoFile
 from pathlib import Path
 
 from django.conf import settings
+from django.contrib.auth.decorators import login_required
 from django.http import (HttpResponse, HttpResponseNotFound,
                          HttpResponseRedirect, JsonResponse)
 from django.shortcuts import get_object_or_404
 
-from photonix.photos.models import Library
+from photonix.photos.models import Library, PhotoFile
 from photonix.photos.utils.thumbnails import get_thumbnail
 
 
@@ -38,16 +38,30 @@ def thumbnailer(request, type, id, width, height, crop, quality):
     return HttpResponseRedirect(path)
 
 
+@login_required
 def upload(request):
     if 'library_id' not in request.GET:
         return JsonResponse({'ok': False, 'message': 'library_id must be supplied as GET parameter'}, status=400)
-    user = request.user
-    lib = get_object_or_404(Library, id=request.GET['library_id'], user=user)
-    libpath = lib.paths.all()[0]
+
+    lib = get_object_or_404(Library, id=request.GET['library_id'], users__user=request.user)
+    libpath = lib.paths.filter(type='St').first()
+    if not libpath:
+        return JsonResponse({'ok': False, 'message': 'Library has no storage path configured'}, status=400)
+
+    storage_root = Path(libpath.path).resolve()
     for fn, file in request.FILES.items():
-        dest = Path(libpath.path) / fn
+        # Sanitize filename to prevent path traversal. We use the key as the filename to match previous behavior.
+        safe_filename = Path(fn).name
+        if not safe_filename:
+            safe_filename = Path(file.name).name
+
+        dest = (storage_root / safe_filename).resolve()
+
+        # Security check: ensure the destination is still within storage_root
+        if not dest.is_relative_to(storage_root):
+            return JsonResponse({'ok': False, 'message': f'Invalid filename: {fn}'}, status=400)
+
         with open(dest, 'wb+') as destination:
-            print(f'Writing to {dest}')
             for chunk in file.chunks():
                 destination.write(chunk)
     return JsonResponse({'ok': True})
