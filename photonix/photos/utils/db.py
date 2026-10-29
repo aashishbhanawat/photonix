@@ -59,8 +59,8 @@ def record_photo(path, library, inotify_event_type=None):
 
     metadata = PhotoMetadata(path)
     date_taken = None
-    possible_date_keys = ['Create Date', 'Date/Time Original', 'Date Time Original',
-                          'Date/Time', 'Date Time', 'GPS Date/Time', 'File Modification Date/Time']
+    possible_date_keys = ['GPS Date/Time', 'GPS Date', 'Create Date', 'Date/Time Original', 'Date Time Original',
+                          'Date/Time', 'Date Time', 'File Modification Date/Time']
     for date_key in possible_date_keys:
         date_taken = parse_datetime(metadata.get(date_key))
         if date_taken:

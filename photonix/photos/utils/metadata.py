@@ -75,21 +75,16 @@ def get_datetime(path):
     Tries to get date/time from EXIF data which works on JPEG and raw files.
     Failing it that it tries to find the date in the filename.
     '''
-    # TODO: Use 'GPS Date/Time' if available as it's more accurate
-
     # First try the date in the metadata
     metadata = PhotoMetadata(path)
-    date_str = metadata.get('Date/Time Original')
-    if date_str:
-        parsed_datetime = parse_datetime(date_str)
-        if parsed_datetime:
-            return parsed_datetime
 
-    date_str = metadata.get('Create Date')
-    if date_str:
-        parsed_datetime = parse_datetime(date_str)
-        if parsed_datetime:
-            return parsed_datetime
+    # GPS Date/Time is more accurate as it's from the satellites, not manually set clock
+    for date_key in ['GPS Date/Time', 'GPS Date', 'Date/Time Original', 'Create Date']:
+        date_str = metadata.get(date_key)
+        if date_str:
+            parsed_datetime = parse_datetime(date_str)
+            if parsed_datetime:
+                return parsed_datetime
 
     # If there was not date metadata, try to infer it from filename
     fn = os.path.split(path)[1]
