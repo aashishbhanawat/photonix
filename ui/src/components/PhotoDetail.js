@@ -23,7 +23,7 @@ import { ReactComponent as RotateRightIcon } from '../static/images/rotate_right
 
 import photos from '../stores/photos/index'
 
-// const I_KEY = 73
+const I_KEY = 73
 const LEFT_KEY = 37
 const RIGHT_KEY = 39
 const BEFORE = 'before'
@@ -169,24 +169,29 @@ const PhotoDetail = ({
   const timelinePhotoIds = useSelector(photos)
   const [showTopIcons, setShowTopIcons] = useState(true)
 
-  // TODO: Bring this back so it doesn't get triggered by someone adding a tag with 'i' in it
-  // useEffect(() => {
-  //   const handleKeyDown = (event) => {
-  //     switch (event.keyCode) {
-  //       case I_KEY:
-  //         setShowMetadata(!showMetadata)
-  //         break
-  //       default:
-  //         break
-  //     }
-  //   }
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (
+        ['INPUT', 'TEXTAREA'].includes(event.target.tagName) ||
+        event.target.isContentEditable
+      ) {
+        return
+      }
+      switch (event.keyCode) {
+        case I_KEY:
+          setShowMetadata((prev) => !prev)
+          break
+        default:
+          break
+      }
+    }
 
-  //   document.addEventListener('keydown', handleKeyDown)
+    document.addEventListener('keydown', handleKeyDown)
 
-  //   return () => {
-  //     document.removeEventListener('keydown', handleKeyDown)
-  //   }
-  // }, [showMetadata])
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [])
 
   const { data: photosData, fetchMore: fetchMorePhotos } = useQuery(
     GET_PHOTOS,
@@ -296,6 +301,12 @@ const PhotoDetail = ({
 
   useEffect(() => {
     const handleKeyDown = (event) => {
+      if (
+        ['INPUT', 'TEXTAREA'].includes(event.target.tagName) ||
+        event.target.isContentEditable
+      ) {
+        return
+      }
       switch (event.keyCode) {
         case LEFT_KEY:
           prevPhoto()
@@ -419,7 +430,7 @@ const PhotoDetail = ({
                 height="30"
                 width="30"
                 onClick={() => setShowMetadata(!showMetadata)}
-                // title="Press [I] key to show/hide photo details"
+                title="Press [I] key to show/hide photo details"
               />
             ) : (
               <CloseIcon
@@ -427,7 +438,7 @@ const PhotoDetail = ({
                 height="30"
                 width="30"
                 onClick={() => setShowMetadata(!showMetadata)}
-                // title="Press [I] key to show/hide photo details"
+                title="Press [I] key to show/hide photo details"
               />
             )}
           </div>
