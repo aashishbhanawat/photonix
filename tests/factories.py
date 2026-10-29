@@ -4,7 +4,7 @@ import factory
 from django.utils import timezone
 
 from photonix.accounts.models import User
-from photonix.photos.models import (Library, LibraryUser, Photo, PhotoFile,
+from photonix.photos.models import (Library, LibraryPath, LibraryUser, Photo, PhotoFile,
                                     PhotoTag, Tag)
 
 
@@ -40,6 +40,16 @@ class LibraryUserFactory(factory.django.DjangoModelFactory):
     library = factory.SubFactory(LibraryFactory)
     user = factory.SubFactory(UserFactory)
     owner = True
+
+
+class LibraryPathFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = LibraryPath
+
+    library = factory.SubFactory(LibraryFactory)
+    type = 'St'
+    backend_type = 'Lo'
+    path = '/data/photos/'
 
 
 class CameraFactory(factory.django.DjangoModelFactory):
