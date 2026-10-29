@@ -4,6 +4,7 @@ import django_filters
 import graphene
 from django.conf import settings
 from django.contrib.auth import get_user_model, load_backend, login
+from django.utils import timezone
 from django.db.models import Case, IntegerField, Value, When
 from django.db.models.functions import Lower
 from django_filters import CharFilter, OrderingFilter
@@ -1185,9 +1186,7 @@ class SetPhotosDeleted(graphene.Mutation):
         user = info.context.user
         try:
             photo_list = Photo.objects.filter(id__in=photo_ids.split(','), library__users__user=user)
-            for photo in photo_list:
-                photo.deleted = True
-                photo.save()
+            photo_list.update(deleted=True, updated_at=timezone.now())
             return SetPhotosDeleted(ok=True)
         except Exception as e:
             raise GraphQLError("Something Went wrong!")
