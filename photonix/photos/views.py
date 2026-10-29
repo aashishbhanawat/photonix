@@ -44,8 +44,16 @@ def upload(request):
     user = request.user
     lib = get_object_or_404(Library, id=request.GET['library_id'], user=user)
     libpath = lib.paths.all()[0]
+    storage_root = Path(libpath.path).resolve()
     for fn, file in request.FILES.items():
-        dest = Path(libpath.path) / fn
+        # Sanitize filename and ensure it's within storage_root
+        safe_fn = Path(fn).name
+        dest = (storage_root / safe_fn).resolve()
+        try:
+            dest.relative_to(storage_root)
+        except ValueError:
+            continue
+
         with open(dest, 'wb+') as destination:
             print(f'Writing to {dest}')
             for chunk in file.chunks():
