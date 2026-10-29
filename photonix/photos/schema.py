@@ -1210,10 +1210,11 @@ class RemovePhotosFromAlbum(graphene.Mutation):
         """Mutation remove photos from particular album tag."""
         user = info.context.user
         try:
-            for photo_id in photo_ids.split(','):
-                photo_tag = PhotoTag.objects.get(
-                    photo__id=photo_id, tag__id=album_id, photo__library__users__user=user)
-                photo_tag.delete()
+            PhotoTag.objects.filter(
+                photo__id__in=photo_ids.split(','),
+                tag__id=album_id,
+                photo__library__users__user=user
+            ).delete()
             return RemovePhotosFromAlbum(ok=True)
         except Exception as e:
             raise GraphQLError("Something Went wrong!")
