@@ -2,7 +2,7 @@ from photonix.photos.models import PhotoFile
 from pathlib import Path
 
 from django.conf import settings
-from django.http import (HttpResponse, HttpResponseNotFound,
+from django.http import (HttpResponse, HttpResponseForbidden, HttpResponseNotFound,
                          HttpResponseRedirect, JsonResponse)
 from django.shortcuts import get_object_or_404
 
@@ -55,9 +55,15 @@ def upload(request):
 
 def dummy_thumbnail_response(request, path):
     # Only used during testing to return thumbnail images. Everywhere else, Nginx handles these requests.
-    filepath = str(Path(settings.THUMBNAIL_ROOT) / path)
+    thumbnail_root = Path(settings.THUMBNAIL_ROOT).resolve()
+    filepath = (thumbnail_root / path).resolve()
+
+    if not filepath.is_relative_to(thumbnail_root):
+        return HttpResponseForbidden('Path traversal attempt detected')
+
+    filepath_str = str(filepath)
     try:
-        with open(filepath, 'rb') as f:
+        with open(filepath_str, 'rb') as f:
             return HttpResponse(f.read(), content_type='image/jpeg')
     except FileNotFoundError:
         # e.g. photofile/256x256_cover_q50/3bfc122c-cbb1-4f21-843a-db79f1d9229d.jpg
@@ -68,5 +74,5 @@ def dummy_thumbnail_response(request, path):
         quality = int(quality[1:])
         get_thumbnail(photo_file=photo_file_id, width=width,
                       height=height, crop=crop, quality=quality, return_type='path')
-        with open(filepath, 'rb') as f:
+        with open(filepath_str, 'rb') as f:
             return HttpResponse(f.read(), content_type='image/jpeg')
