@@ -295,6 +295,9 @@ const PhotoDetail = ({
         case RIGHT_KEY:
           nextPhoto()
           break
+        case I_KEY:
+          setShowMetadata((prev) => !prev)
+          break
         default:
           break
       }
