@@ -75,15 +75,6 @@ export const SETTINGS_FACE = gql`
     }
   }
 `
-export const SETTINGS_SOURCE_FOLDER = gql`
-  mutation updateSourceFolder($sourceFolder: String!, $libraryId: ID) {
-    updateSourceFolder(
-      input: { sourceFolder: $sourceFolder, libraryId: $libraryId }
-    ) {
-      sourceFolder
-    }
-  }
-`
 
 export const GET_SETTINGS = gql`
   query LibrarySetting($libraryId: UUID) {
