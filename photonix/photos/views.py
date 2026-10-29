@@ -44,8 +44,16 @@ def upload(request):
     user = request.user
     lib = get_object_or_404(Library, id=request.GET['library_id'], user=user)
     libpath = lib.paths.all()[0]
+    storage_root = Path(libpath.path).resolve()
     for fn, file in request.FILES.items():
-        dest = Path(libpath.path) / fn
+        # Sanitize filename to prevent path traversal
+        filename = Path(fn).name
+        if not filename:
+            continue
+        dest = (storage_root / filename).resolve()
+        if not dest.is_relative_to(storage_root):
+            continue
+
         with open(dest, 'wb+') as destination:
             print(f'Writing to {dest}')
             for chunk in file.chunks():
@@ -55,7 +63,11 @@ def upload(request):
 
 def dummy_thumbnail_response(request, path):
     # Only used during testing to return thumbnail images. Everywhere else, Nginx handles these requests.
-    filepath = str(Path(settings.THUMBNAIL_ROOT) / path)
+    thumbnail_root = Path(settings.THUMBNAIL_ROOT).resolve()
+    filepath = (thumbnail_root / path).resolve()
+    if not filepath.is_relative_to(thumbnail_root):
+        return HttpResponseNotFound('Invalid path')
+
     try:
         with open(filepath, 'rb') as f:
             return HttpResponse(f.read(), content_type='image/jpeg')
