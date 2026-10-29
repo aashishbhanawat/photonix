@@ -30,18 +30,38 @@ URLS = [
 class Command(BaseCommand):
     help = 'Downloads sample photos for displaying on the demo site'
 
-    def import_photos(self):
+    def add_arguments(self, parser):
+        parser.add_argument(
+            '--username',
+            type=str,
+            default=os.environ.get('DEMO_USERNAME', 'demo'),
+            help='Demo username'
+        )
+        parser.add_argument(
+            '--email',
+            type=str,
+            default=os.environ.get('DEMO_EMAIL', 'demo@photonix.org'),
+            help='Demo email'
+        )
+        parser.add_argument(
+            '--password',
+            type=str,
+            default=os.environ.get('DEMO_PASSWORD', 'demo'),
+            help='Demo password'
+        )
+
+    def import_photos(self, username, email, password):
         # Create demo User account
         try:
             user = User.objects.create_user(
-                username='demo', email='demo@photonix.org', password='demo')
+                username=username, email=email, password=password)
             user.has_set_personal_info = True
             user.has_created_library = True
             user.has_configured_importing = True
             user.has_configured_image_analysis = True
             user.save()
         except IntegrityError:
-            user = User.objects.get(username='demo')
+            user = User.objects.get(username=username)
 
         # Create Library
         try:
@@ -91,4 +111,8 @@ class Command(BaseCommand):
                 record_photo(dest_path, library)
 
     def handle(self, *args, **options):
-        self.import_photos()
+        self.import_photos(
+            options['username'],
+            options['email'],
+            options['password']
+        )
