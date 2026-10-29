@@ -127,15 +127,19 @@ const FiltersContainer = ({
 
   const getFilterdData = (type, array) => {
     const filterArr = selectedFilters.filter((s) => s.group === type)
+    if (filterArr.length === 0) return array
+
+    const filterNames = new Set(filterArr.map((f) => f.name))
     let data = []
-    if (type === 'Locations' && filterArr.length > 0) {
-      const id = array.filter((c) =>
-        filterArr.find((rm) => rm.name === c.name)
-      )[0].id
-      data = array.filter((c) => !filterArr.find((rm) => rm.name === c.name))
-      data = data.filter((d) => d?.parent?.id !== id)
+    if (type === 'Locations') {
+      const matched = array.find((c) => filterNames.has(c.name))
+      const id = matched ? matched.id : null
+      data = array.filter((c) => !filterNames.has(c.name))
+      if (id) {
+        data = data.filter((d) => d?.parent?.id !== id)
+      }
     } else {
-      data = array.filter((c) => !filterArr.find((rm) => rm.name === c.name))
+      data = array.filter((c) => !filterNames.has(c.name))
     }
     return data
   }
