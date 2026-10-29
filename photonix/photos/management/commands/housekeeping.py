@@ -1,13 +1,13 @@
 import os
 from pathlib import Path
 from shutil import rmtree
-from time import sleep
 
 from django.conf import settings
 from django.core.management.base import BaseCommand
 
-from photonix.photos.models import Photo, Task
+from photonix.photos.models import Photo
 from photonix.photos.utils.thumbnails import THUMBNAILER_VERSION
+from photonix.photos.tasks import generate_thumbnails_task
 from photonix.web.utils import logger
 
 
@@ -32,9 +32,7 @@ class Command(BaseCommand):
             logger.info(
                 f'Rescheduling {photos.count()} photos to have their thumbnails regenerated')
             for photo in photos:
-                Task(
-                    type='generate_thumbnails', subject_id=photo.id,
-                    library=photo.library).save()
+                generate_thumbnails_task.delay(photo.id)
 
     def handle(self, *args, **options):
         self.housekeeping()
