@@ -1,4 +1,3 @@
-from photonix.photos.models import PhotoFile
 from pathlib import Path
 
 from django.conf import settings
