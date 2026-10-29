@@ -22,12 +22,18 @@ export const refreshToken = () => {
     return false
   }
 
+  const csrftoken = Cookies.get('csrftoken')
+  const headers = {
+    Accept: 'application/json',
+    'Content-Type': 'application/json',
+  }
+  if (csrftoken) {
+    headers['X-CSRFToken'] = csrftoken
+  }
+
   fetch('/graphql', {
     method: 'POST',
-    headers: {
-      Accept: 'application/json',
-      'Content-Type': 'application/json',
-    },
+    headers: headers,
     body: JSON.stringify({
       query: `mutation RefreshToken($refreshToken: String!) {
   refreshToken(refreshToken: $refreshToken) {
@@ -103,12 +109,18 @@ export const revokeRefreshToken = (refreshToken) => {
   // This only needs to be called on logout as old refresh tokens get automatically revoked by Django signal (one time use)
   console.log('revokeRefreshToken ' + refreshToken)
 
+  const csrftoken = Cookies.get('csrftoken')
+  const headers = {
+    Accept: 'application/json',
+    'Content-Type': 'application/json',
+  }
+  if (csrftoken) {
+    headers['X-CSRFToken'] = csrftoken
+  }
+
   fetch('/graphql', {
     method: 'POST',
-    headers: {
-      Accept: 'application/json',
-      'Content-Type': 'application/json',
-    },
+    headers: headers,
     body: JSON.stringify({
       query: `mutation RevokeToken($refreshToken: String!) {
   revokeToken(refreshToken: $refreshToken) {

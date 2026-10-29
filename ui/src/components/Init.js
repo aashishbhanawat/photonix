@@ -17,6 +17,8 @@ import { ChakraProvider } from '@chakra-ui/react'
 import history from '../history'
 import reducers from './../stores'
 import customTheme from '../theme'
+import Cookies from 'js-cookie'
+
 import { logOut } from '../auth'
 
 export const store = createStore(
@@ -29,6 +31,17 @@ window.photonix = {
 }
 
 const additiveLink = from([
+  new ApolloLink((operation, forward) => {
+    const csrftoken = Cookies.get('csrftoken')
+    if (csrftoken) {
+      operation.setContext({
+        headers: {
+          'X-CSRFToken': csrftoken,
+        },
+      })
+    }
+    return forward(operation)
+  }),
   new RetryLink({
     delay: {
       initial: 500,
